@@ -4,7 +4,16 @@ import { WebSocketServer, WebSocket } from "ws";
 import { createServer } from "http";
 import path from "path";
 import { getAccountState, onAccountEvent, startLogin } from "./account";
-import { addServer, connectServer, getServer, listServers, onServerEvent, NotLoggedInError } from "./servers";
+import {
+  addServer,
+  connectServer,
+  getServer,
+  listServers,
+  onServerEvent,
+  sendChatToServer,
+  NotConnectedError,
+  NotLoggedInError,
+} from "./servers";
 
 const WEB_PORT = Number(process.env.WEB_PORT ?? 3000);
 
@@ -65,6 +74,24 @@ app.post("/api/servers/:id/connect", (req, res) => {
   } catch (err) {
     if (err instanceof NotLoggedInError) {
       res.status(409).json({ error: err.message, code: "not-logged-in" });
+      return;
+    }
+    res.status(400).json({ error: (err as Error).message });
+  }
+});
+
+app.post("/api/servers/:id/chat", (req, res) => {
+  const { message } = req.body ?? {};
+  if (!message) {
+    res.status(400).json({ error: "message is required" });
+    return;
+  }
+  try {
+    sendChatToServer(req.params.id, String(message));
+    res.json({ ok: true });
+  } catch (err) {
+    if (err instanceof NotConnectedError) {
+      res.status(409).json({ error: err.message, code: "not-connected" });
       return;
     }
     res.status(400).json({ error: (err as Error).message });

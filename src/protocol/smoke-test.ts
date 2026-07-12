@@ -43,6 +43,30 @@ assert.strictEqual(r.readUUID(), "0102030405060708090a0b0c0d0e0f10");
 assert.strictEqual(r.remaining, 0);
 console.log("PacketWriter/Reader roundtrip: OK");
 
+// Serverbound Chat Message field layout, matching RawMcClient.sendChat().
+{
+  const now = BigInt(Date.now());
+  const chatW = new PacketWriter(9)
+    .writeString("hello world")
+    .writeLong(now)
+    .writeLong(0n)
+    .writeBoolean(false)
+    .writeVarInt(0)
+    .writeRaw(Buffer.alloc(3));
+  const chatBuilt = chatW.build();
+  const chatIdInfo = readVarInt(chatBuilt, 0);
+  assert.strictEqual(chatIdInfo.value, 9);
+  const cr = new PacketReader(chatBuilt.subarray(chatIdInfo.length));
+  assert.strictEqual(cr.readString(), "hello world");
+  assert.strictEqual(cr.readLong(), now);
+  assert.strictEqual(cr.readLong(), 0n);
+  assert.strictEqual(cr.readBoolean(), false);
+  assert.strictEqual(cr.readVarInt(), 0);
+  assert.deepStrictEqual([...cr.readFixedBytes(3)], [0, 0, 0]);
+  assert.strictEqual(cr.remaining, 0);
+}
+console.log("Serverbound Chat Message field roundtrip: OK");
+
 // Minecraft server-hash: the well-known wiki.vg test vectors.
 assert.strictEqual(
   minecraftServerHash("Notch", Buffer.alloc(0), Buffer.alloc(0)),

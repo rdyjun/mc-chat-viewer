@@ -61,6 +61,10 @@
     <div class="panel" id="chatPanel">
       <div id="chatStatus">서버를 추가하고 연결해보세요.</div>
       <div id="log"></div>
+      <form id="chatForm" style="display:flex; gap:0.5rem; margin-top:0.75rem;">
+        <input name="message" placeholder="채팅 입력 (서명 안 된 메시지라 secure chat 강제 서버에서는 안 될 수 있음)" style="flex:1" />
+        <button type="submit">전송</button>
+      </form>
     </div>
   </div>
 
@@ -71,6 +75,7 @@
     const addServerForm = document.getElementById("addServerForm");
     const serverListEl = document.getElementById("serverList");
     const chatStatusEl = document.getElementById("chatStatus");
+    const chatForm = document.getElementById("chatForm");
     const logEl = document.getElementById("log");
 
     let account = { status: "logged-out", msaCode: null };
@@ -192,6 +197,28 @@
         return;
       }
       addServerForm.reset();
+    });
+
+    chatForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!selectedServerId) {
+        alert("먼저 서버를 선택/연결하세요.");
+        return;
+      }
+      const input = chatForm.querySelector("input[name=message]");
+      const message = input.value.trim();
+      if (!message) return;
+      const res = await fetch("/api/servers/" + selectedServerId + "/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: res.statusText }));
+        alert("전송 실패: " + body.error);
+        return;
+      }
+      input.value = "";
     });
 
     const ws = new WebSocket(`ws://${location.host}`);

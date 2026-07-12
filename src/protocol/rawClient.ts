@@ -32,7 +32,7 @@ const PACKET_IDS = {
   },
   play: {
     clientbound: { DisguisedChatMessage: 33, PlayerChatMessage: 65, KeepAlive: 44, SystemChatMessage: 121 },
-    serverbound: { KeepAlive: 28 },
+    serverbound: { ChatMessage: 9, KeepAlive: 28 },
   },
 } as const;
 
@@ -234,6 +234,30 @@ export class RawMcClient extends EventEmitter {
 
   private sendPlayKeepAlive(id: bigint) {
     this.sendFrame(new PacketWriter(PACKET_IDS.play.serverbound.KeepAlive).writeLong(id));
+  }
+
+  get isPlaying(): boolean {
+    return this.state === "play";
+  }
+
+  /**
+   * Sends a plain (unsigned) chat message. Servers with secure chat enforcement enabled
+   * (`enforce-secure-profile=true`) may reject or kick for unsigned messages — full signed
+   * chat would need a per-session key pair from Mojang's player-certificates endpoint and
+   * RSA-signing every message, which isn't implemented here.
+   */
+  sendChat(message: string) {
+    if (this.state !== "play") {
+      throw new Error("Not connected (not in play state yet)");
+    }
+    const w = new PacketWriter(PACKET_IDS.play.serverbound.ChatMessage)
+      .writeString(message)
+      .writeLong(BigInt(Date.now()))
+      .writeLong(0n) // salt: 0 signals "not actually signed"
+      .writeBoolean(false) // has signature: false (unsigned)
+      .writeVarInt(0) // message count acknowledged
+      .writeRaw(Buffer.alloc(3)); // fixed 20-bit "acknowledged" bitset, all-zero (nothing tracked)
+    this.sendFrame(w);
   }
 
   // ---- incoming dispatch ----

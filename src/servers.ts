@@ -59,6 +59,19 @@ export class NotLoggedInError extends Error {
   }
 }
 
+export class NotConnectedError extends Error {
+  constructor() {
+    super("This server isn't connected yet");
+  }
+}
+
+/** Sends a chat message to a server that's actually reached the play state. */
+export function sendChatToServer(id: string, message: string): void {
+  const server = servers.get(id);
+  if (!server?.client?.isPlaying) throw new NotConnectedError();
+  server.client.sendChat(message);
+}
+
 /** Connects a saved server using the currently logged-in account. Throws NotLoggedInError if none. */
 export function connectServer(id: string): void {
   const server = servers.get(id);
