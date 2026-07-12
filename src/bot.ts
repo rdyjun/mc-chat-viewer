@@ -6,15 +6,23 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+export interface MsaCode {
+  message: string;
+  user_code: string;
+  verification_uri: string;
+}
+
 export interface BotHandle {
   bot: Bot;
 }
 
 /**
- * Connects to the configured server using the player's own Microsoft account.
- * mineflayer/prismarine-auth handles the OAuth device-code flow: on first run it prints a
- * one-time URL + code to the console for the user to approve in a browser, then caches the
- * resulting tokens locally (see .gitignore) so subsequent runs reconnect silently.
+ * Connects to the given server using the player's own Microsoft account.
+ * mineflayer/prismarine-auth handles the OAuth device-code flow. Instead of letting it print
+ * the login URL/code to the server's console (useless for a multi-user web app), `onMsaCode`
+ * is forwarded through mineflayer -> minecraft-protocol -> prismarine-auth so the code can be
+ * surfaced in the web dashboard instead. Tokens are cached under profilesFolder afterward
+ * (gitignored) so future sessions for the same account reconnect without prompting again.
  */
 export function connectBot(
   host: string,
@@ -22,7 +30,8 @@ export function connectBot(
   version: string | undefined,
   msaEmail: string,
   onChat: (msg: ChatMessage) => void,
-  onStatus: (status: string) => void
+  onStatus: (status: string) => void,
+  onMsaCode: (code: MsaCode) => void
 ): BotHandle {
   const bot = mineflayer.createBot({
     host,
@@ -30,6 +39,7 @@ export function connectBot(
     version: version || undefined,
     auth: "microsoft",
     username: msaEmail, // Microsoft account email; the device-code flow authenticates it
+    onMsaCode,
   });
 
   bot.on("login", () => onStatus(`Logged in as ${bot.username}`));

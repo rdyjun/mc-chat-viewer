@@ -5,44 +5,141 @@
 <title>MC Chat Viewer</title>
 <style>
   body { font-family: system-ui, sans-serif; background: #1e1e1e; color: #eee; margin: 0; padding: 1.5rem; }
-  h1 { font-size: 1.1rem; margin-bottom: 0.25rem; }
-  #status { color: #9ad; font-size: 0.85rem; margin-bottom: 1rem; }
-  #log { max-width: 700px; }
-  .line { padding: 0.2rem 0; border-bottom: 1px solid #333; font-size: 0.95rem; }
+  h1 { font-size: 1.1rem; margin-bottom: 1rem; }
+  h2 { font-size: 0.95rem; color: #ccc; }
+  .layout { display: flex; gap: 2rem; align-items: flex-start; }
+  .panel { background: #262626; border-radius: 8px; padding: 1rem; }
+  #connectForm { display: flex; flex-direction: column; gap: 0.5rem; width: 260px; }
+  #connectForm input { padding: 0.4rem; border-radius: 4px; border: 1px solid #444; background: #333; color: #eee; }
+  #connectForm button { padding: 0.5rem; border-radius: 4px; border: none; background: #4a7; color: #111; font-weight: bold; cursor: pointer; }
+  #sessions { list-style: none; padding: 0; margin: 0.5rem 0 0; }
+  #sessions li { padding: 0.4rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
+  #sessions li:hover { background: #333; }
+  #sessions li.active { background: #375; }
+  #status { color: #9ad; font-size: 0.85rem; margin-bottom: 0.5rem; }
+  #msaCode { background: #443; border: 1px solid #a90; padding: 0.75rem; border-radius: 6px; margin-bottom: 0.75rem; font-size: 0.9rem; display: none; }
+  #msaCode a { color: #fd6; }
+  #log { width: 500px; height: 60vh; overflow-y: auto; }
+  .line { padding: 0.2rem 0; border-bottom: 1px solid #333; font-size: 0.9rem; word-break: break-word; }
   .time { color: #888; font-size: 0.8rem; margin-right: 0.5rem; }
 </style>
 </head>
 <body>
   <h1>Minecraft Chat Viewer</h1>
-  <div id="status">connecting to dashboard...</div>
-  <div id="log"></div>
+  <div class="layout">
+    <div class="panel">
+      <h2>서버 연결</h2>
+      <form id="connectForm">
+        <input name="host" placeholder="서버 주소 (예: mc.example.net)" required />
+        <input name="port" placeholder="포트 (기본 25565)" />
+        <input name="email" placeholder="Microsoft 계정 이메일" required />
+        <input name="version" placeholder="버전 (선택, 예: 1.20.4)" />
+        <button type="submit">연결</button>
+      </form>
+      <h2 style="margin-top:1rem">세션</h2>
+      <ul id="sessions"></ul>
+    </div>
+
+    <div class="panel" style="flex:1">
+      <div id="status">세션을 연결하거나 선택하세요.</div>
+      <div id="msaCode"></div>
+      <div id="log"></div>
+    </div>
+  </div>
 
   <script>
-    const log = document.getElementById("log");
-    const status = document.getElementById("status");
+    const form = document.getElementById("connectForm");
+    const sessionsEl = document.getElementById("sessions");
+    const statusEl = document.getElementById("status");
+    const msaCodeEl = document.getElementById("msaCode");
+    const logEl = document.getElementById("log");
+
+    let currentSessionId = null;
+    let ws = null;
 
     function addLine(text, time) {
       const div = document.createElement("div");
       div.className = "line";
       const t = new Date(time).toLocaleTimeString();
-      div.innerHTML = '<span class="time">' + t + '</span>' + text;
-      log.appendChild(div);
-      window.scrollTo(0, document.body.scrollHeight);
+      div.innerHTML = '<span class="time">' + t + '</span>' + escapeHtml(text);
+      logEl.appendChild(div);
+      logEl.scrollTop = logEl.scrollHeight;
     }
 
-    const ws = new WebSocket(`ws://${location.host}`);
-    ws.onopen = () => (status.textContent = "connected");
-    ws.onclose = () => (status.textContent = "disconnected — refresh to retry");
-    ws.onmessage = (evt) => {
-      const data = JSON.parse(evt.data);
-      if (data.type === "history") {
-        data.messages.forEach((m) => addLine(m.message, m.timestamp));
-      } else if (data.type === "chat") {
-        addLine(data.message.message, data.message.timestamp);
-      } else if (data.type === "status") {
-        status.textContent = data.status;
+    function escapeHtml(s) {
+      const d = document.createElement("div");
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    function showMsaCode(code) {
+      if (!code) {
+        msaCodeEl.style.display = "none";
+        return;
       }
-    };
+      msaCodeEl.style.display = "block";
+      msaCodeEl.innerHTML =
+        "로그인이 필요합니다: <a href='" + code.verification_uri + "' target='_blank'>" +
+        code.verification_uri + "</a> 에서 코드 <b>" + code.user_code + "</b> 입력";
+    }
+
+    async function refreshSessionList() {
+      const res = await fetch("/api/sessions");
+      const list = await res.json();
+      sessionsEl.innerHTML = "";
+      list.forEach((s) => {
+        const li = document.createElement("li");
+        li.textContent = s.host + " (" + s.status + ")";
+        li.className = s.id === currentSessionId ? "active" : "";
+        li.onclick = () => openSession(s.id);
+        sessionsEl.appendChild(li);
+      });
+    }
+
+    function openSession(id) {
+      currentSessionId = id;
+      logEl.innerHTML = "";
+      showMsaCode(null);
+      statusEl.textContent = "connecting to dashboard...";
+      if (ws) ws.close();
+
+      ws = new WebSocket(`ws://${location.host}?sessionId=${id}`);
+      ws.onmessage = (evt) => {
+        const data = JSON.parse(evt.data);
+        if (data.type === "init") {
+          statusEl.textContent = data.status;
+          showMsaCode(data.msaCode);
+          data.messages.forEach((m) => addLine(m.message, m.timestamp));
+        } else if (data.type === "chat") {
+          addLine(data.message.message, data.message.timestamp);
+        } else if (data.type === "status") {
+          statusEl.textContent = data.status;
+        } else if (data.type === "msa-code") {
+          showMsaCode(data.code);
+        }
+      };
+      refreshSessionList();
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(form).entries());
+      const res = await fetch("/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        alert("연결 실패: " + (await res.text()));
+        return;
+      }
+      const { id } = await res.json();
+      form.reset();
+      await refreshSessionList();
+      openSession(id);
+    });
+
+    refreshSessionList();
   </script>
 </body>
 </html>
