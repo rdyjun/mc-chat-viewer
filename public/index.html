@@ -6,20 +6,27 @@
 <style>
   body { font-family: system-ui, sans-serif; background: #1e1e1e; color: #eee; margin: 0; padding: 1.5rem; }
   h1 { font-size: 1.1rem; margin-bottom: 1rem; }
-  h2 { font-size: 0.95rem; color: #ccc; }
-  .layout { display: flex; gap: 2rem; align-items: flex-start; }
+  h2 { font-size: 0.95rem; color: #ccc; margin: 0 0 0.5rem; }
+  .layout { display: flex; gap: 1.5rem; align-items: flex-start; }
   .panel { background: #262626; border-radius: 8px; padding: 1rem; }
-  #connectForm { display: flex; flex-direction: column; gap: 0.5rem; width: 260px; }
-  #connectForm input { padding: 0.4rem; border-radius: 4px; border: 1px solid #444; background: #333; color: #eee; }
-  #connectForm button { padding: 0.5rem; border-radius: 4px; border: none; background: #4a7; color: #111; font-weight: bold; cursor: pointer; }
-  #sessions { list-style: none; padding: 0; margin: 0.5rem 0 0; }
-  #sessions li { padding: 0.4rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
-  #sessions li:hover { background: #333; }
-  #sessions li.active { background: #375; }
-  #status { color: #9ad; font-size: 0.85rem; margin-bottom: 0.5rem; }
-  #msaCode { background: #443; border: 1px solid #a90; padding: 0.75rem; border-radius: 6px; margin-bottom: 0.75rem; font-size: 0.9rem; display: none; }
+  .sidebar { width: 280px; display: flex; flex-direction: column; gap: 1rem; }
+  input { padding: 0.4rem; border-radius: 4px; border: 1px solid #444; background: #333; color: #eee; width: 100%; box-sizing: border-box; }
+  button { padding: 0.45rem 0.7rem; border-radius: 4px; border: none; background: #4a7; color: #111; font-weight: bold; cursor: pointer; }
+  button:disabled { background: #555; color: #999; cursor: not-allowed; }
+  #accountForm { display: flex; flex-direction: column; gap: 0.5rem; }
+  #accountStatus { font-size: 0.85rem; margin-bottom: 0.4rem; }
+  #msaCode { background: #443; border: 1px solid #a90; padding: 0.6rem; border-radius: 6px; margin-top: 0.5rem; font-size: 0.85rem; }
   #msaCode a { color: #fd6; }
-  #log { width: 500px; height: 60vh; overflow-y: auto; }
+  #addServerForm { display: flex; flex-direction: column; gap: 0.5rem; }
+  #serverList { list-style: none; padding: 0; margin: 0.5rem 0 0; display: flex; flex-direction: column; gap: 0.4rem; }
+  #serverList li { padding: 0.5rem; border-radius: 6px; background: #333; font-size: 0.85rem; }
+  #serverList li.selected { outline: 2px solid #4a7; }
+  .server-row { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+  .server-meta { cursor: pointer; }
+  .server-status { color: #9ad; font-size: 0.75rem; }
+  #chatPanel { flex: 1; }
+  #chatStatus { color: #9ad; font-size: 0.85rem; margin-bottom: 0.5rem; }
+  #log { height: 60vh; overflow-y: auto; }
   .line { padding: 0.2rem 0; border-bottom: 1px solid #333; font-size: 0.9rem; word-break: break-word; }
   .time { color: #888; font-size: 0.8rem; margin-right: 0.5rem; }
 </style>
@@ -27,35 +34,130 @@
 <body>
   <h1>Minecraft Chat Viewer</h1>
   <div class="layout">
-    <div class="panel">
-      <h2>서버 연결</h2>
-      <form id="connectForm">
-        <input name="host" placeholder="서버 주소 (예: mc.example.net)" required />
-        <input name="port" placeholder="포트 (기본 25565)" />
-        <input name="email" placeholder="Microsoft 계정 이메일" required />
-        <input name="version" placeholder="버전 (필수, 예: 26.1.2 또는 프로토콜 번호 775)" required />
-        <button type="submit">연결</button>
-      </form>
-      <h2 style="margin-top:1rem">세션</h2>
-      <ul id="sessions"></ul>
+    <div class="sidebar">
+      <div class="panel">
+        <h2>계정</h2>
+        <div id="accountStatus">확인 중...</div>
+        <form id="accountForm">
+          <input name="email" placeholder="Microsoft 계정 이메일" required />
+          <button type="submit">로그인</button>
+        </form>
+        <div id="msaCode" style="display:none"></div>
+      </div>
+
+      <div class="panel">
+        <h2>서버 추가</h2>
+        <form id="addServerForm">
+          <input name="host" placeholder="서버 주소" required />
+          <input name="port" placeholder="포트 (기본 25565)" />
+          <input name="version" placeholder="버전 (예: 26.1.2 또는 775)" required />
+          <button type="submit">추가</button>
+        </form>
+        <h2 style="margin-top:1rem">서버 목록</h2>
+        <ul id="serverList"></ul>
+      </div>
     </div>
 
-    <div class="panel" style="flex:1">
-      <div id="status">세션을 연결하거나 선택하세요.</div>
-      <div id="msaCode"></div>
+    <div class="panel" id="chatPanel">
+      <div id="chatStatus">서버를 추가하고 연결해보세요.</div>
       <div id="log"></div>
     </div>
   </div>
 
   <script>
-    const form = document.getElementById("connectForm");
-    const sessionsEl = document.getElementById("sessions");
-    const statusEl = document.getElementById("status");
+    const accountForm = document.getElementById("accountForm");
+    const accountStatusEl = document.getElementById("accountStatus");
     const msaCodeEl = document.getElementById("msaCode");
+    const addServerForm = document.getElementById("addServerForm");
+    const serverListEl = document.getElementById("serverList");
+    const chatStatusEl = document.getElementById("chatStatus");
     const logEl = document.getElementById("log");
 
-    let currentSessionId = null;
-    let ws = null;
+    let account = { status: "logged-out", msaCode: null };
+    let servers = [];
+    let selectedServerId = null;
+
+    function escapeHtml(s) {
+      const d = document.createElement("div");
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    function renderAccount() {
+      if (account.status === "logged-in") {
+        accountStatusEl.textContent = "✅ " + account.profile.name + " 로그인됨";
+        accountForm.style.display = "none";
+      } else if (account.status === "logging-in") {
+        accountStatusEl.textContent = "로그인 진행 중 (" + account.email + ")";
+        accountForm.style.display = "none";
+      } else if (account.status === "error") {
+        accountStatusEl.textContent = "로그인 실패: " + account.error;
+        accountForm.style.display = "";
+      } else {
+        accountStatusEl.textContent = "로그인이 필요합니다.";
+        accountForm.style.display = "";
+      }
+
+      if (account.msaCode) {
+        msaCodeEl.style.display = "block";
+        msaCodeEl.innerHTML =
+          "<a href='" + account.msaCode.verification_uri + "' target='_blank'>" +
+          account.msaCode.verification_uri + "</a> 에서 코드 <b>" + account.msaCode.user_code + "</b> 입력";
+      } else {
+        msaCodeEl.style.display = "none";
+      }
+    }
+
+    function renderServers() {
+      serverListEl.innerHTML = "";
+      servers.forEach((s) => {
+        const li = document.createElement("li");
+        li.className = s.id === selectedServerId ? "selected" : "";
+        const canConnect = s.status === "idle" || s.status === "error" || s.status.startsWith("Disconnected");
+        li.innerHTML =
+          '<div class="server-row">' +
+          '<span class="server-meta">' + escapeHtml(s.host) + ':' + s.port + '</span>' +
+          '<button ' + (canConnect ? "" : "disabled") + '>' + (canConnect ? "연결" : "연결중") + '</button>' +
+          '</div>' +
+          '<div class="server-status">' + escapeHtml(s.status) + '</div>';
+
+        li.querySelector(".server-meta").onclick = () => selectServer(s.id);
+        const btn = li.querySelector("button");
+        btn.onclick = () => connectServer(s.id);
+        serverListEl.appendChild(li);
+      });
+    }
+
+    function selectServer(id) {
+      selectedServerId = id;
+      renderServers();
+      loadServerDetail(id);
+    }
+
+    async function loadServerDetail(id) {
+      const res = await fetch("/api/servers/" + id);
+      if (!res.ok) return;
+      const detail = await res.json();
+      chatStatusEl.textContent = detail.host + ":" + detail.port + " — " + detail.status;
+      logEl.innerHTML = "";
+      detail.messages.forEach((m) => addLine(m.message, m.timestamp));
+    }
+
+    async function connectServer(id) {
+      const res = await fetch("/api/servers/" + id + "/connect", { method: "POST" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: res.statusText }));
+        if (body.code === "not-logged-in") {
+          alert("먼저 로그인 해주세요.");
+          accountForm.style.display = "";
+          accountForm.querySelector("input[name=email]").focus();
+        } else {
+          alert("연결 실패: " + body.error);
+        }
+        return;
+      }
+      selectServer(id);
+    }
 
     function addLine(text, time) {
       const div = document.createElement("div");
@@ -66,81 +168,54 @@
       logEl.scrollTop = logEl.scrollHeight;
     }
 
-    function escapeHtml(s) {
-      const d = document.createElement("div");
-      d.textContent = s;
-      return d.innerHTML;
-    }
-
-    function showMsaCode(code) {
-      if (!code) {
-        msaCodeEl.style.display = "none";
-        return;
-      }
-      msaCodeEl.style.display = "block";
-      msaCodeEl.innerHTML =
-        "로그인이 필요합니다: <a href='" + code.verification_uri + "' target='_blank'>" +
-        code.verification_uri + "</a> 에서 코드 <b>" + code.user_code + "</b> 입력";
-    }
-
-    async function refreshSessionList() {
-      const res = await fetch("/api/sessions");
-      const list = await res.json();
-      sessionsEl.innerHTML = "";
-      list.forEach((s) => {
-        const li = document.createElement("li");
-        li.textContent = s.host + " (" + s.status + ")";
-        li.className = s.id === currentSessionId ? "active" : "";
-        li.onclick = () => openSession(s.id);
-        sessionsEl.appendChild(li);
-      });
-    }
-
-    function openSession(id) {
-      currentSessionId = id;
-      logEl.innerHTML = "";
-      showMsaCode(null);
-      statusEl.textContent = "connecting to dashboard...";
-      if (ws) ws.close();
-
-      ws = new WebSocket(`ws://${location.host}?sessionId=${id}`);
-      ws.onmessage = (evt) => {
-        const data = JSON.parse(evt.data);
-        if (data.type === "init") {
-          statusEl.textContent = data.status;
-          showMsaCode(data.msaCode);
-          data.messages.forEach((m) => addLine(m.message, m.timestamp));
-        } else if (data.type === "chat") {
-          addLine(data.message.message, data.message.timestamp);
-        } else if (data.type === "status") {
-          statusEl.textContent = data.status;
-        } else if (data.type === "msa-code") {
-          showMsaCode(data.code);
-        }
-      };
-      refreshSessionList();
-    }
-
-    form.addEventListener("submit", async (e) => {
+    accountForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const data = Object.fromEntries(new FormData(form).entries());
-      const res = await fetch("/api/sessions", {
+      const data = Object.fromEntries(new FormData(accountForm).entries());
+      await fetch("/api/account/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+    });
+
+    addServerForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(addServerForm).entries());
+      const res = await fetch("/api/servers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: res.statusText }));
-        alert("연결 실패: " + body.error);
+        alert("서버 추가 실패: " + body.error);
         return;
       }
-      const { id } = await res.json();
-      form.reset();
-      await refreshSessionList();
-      openSession(id);
+      addServerForm.reset();
     });
 
-    refreshSessionList();
+    const ws = new WebSocket(`ws://${location.host}`);
+    ws.onmessage = (evt) => {
+      const data = JSON.parse(evt.data);
+      if (data.type === "account") {
+        account = data.account;
+        renderAccount();
+      } else if (data.type === "servers") {
+        servers = data.servers;
+        renderServers();
+      } else if (data.type === "server-event") {
+        const s = servers.find((x) => x.id === data.serverId);
+        if (data.payload.type === "status") {
+          if (s) s.status = data.payload.status;
+          renderServers();
+          if (data.serverId === selectedServerId) {
+            chatStatusEl.textContent = (s ? s.host + ":" + s.port : "") + " — " + data.payload.status;
+          }
+        } else if (data.payload.type === "chat" && data.serverId === selectedServerId) {
+          addLine(data.payload.message.message, data.payload.message.timestamp);
+        }
+      }
+    };
   </script>
 </body>
 </html>

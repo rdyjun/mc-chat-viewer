@@ -1,8 +1,12 @@
 # mc-chat-viewer
 
-Connects to any Minecraft server (chosen at runtime from the dashboard) using your own
-Microsoft account and mirrors chat to a live web dashboard. Multiple sessions (different
-servers/accounts) can run side by side.
+Connects to any Minecraft server (added at runtime from the dashboard) using your own
+Microsoft account and mirrors chat to a live web dashboard.
+
+Login and server connections are separate steps: log in with your Microsoft account once,
+then add as many servers as you like and click Connect on each — connecting reuses the
+already-logged-in account. Clicking Connect before logging in returns a clear "log in
+first" error instead of silently failing.
 
 ## Why a hand-rolled protocol client
 
@@ -28,11 +32,13 @@ IDs, the Player Chat Message field layout) are best-effort — see the caveats b
 ## How auth works
 
 No custom OAuth server needed — `prismarine-auth` handles the Microsoft device-code login
-flow. Instead of printing the login URL/code to the server console, it's forwarded to the
-dashboard (`onMsaCode` -> WebSocket) so it shows up next to the session you just started.
-Open the URL, enter the code, approve with the Microsoft account that owns the Minecraft
-account. Tokens are cached locally afterward (gitignored, under `nmp-cache/`) so
-reconnecting the same account later skips the prompt.
+flow (via `src/account.ts`, using the same client ID mineflayer defaults to, which doesn't
+require registering your own Azure app). Instead of printing the login URL/code to the
+server console, it's forwarded to the dashboard (`onMsaCode` -> WebSocket) so it shows up
+in the Account panel. Open the URL, enter the code, approve with the Microsoft account
+that owns the Minecraft account. Tokens are cached locally afterward (gitignored, under
+`nmp-cache/`) so logging in again later (same email) skips the prompt. Only one account is
+logged in at a time — logging in with a different email replaces it.
 
 ## Setup
 
@@ -42,10 +48,15 @@ cp .env.example .env   # WEB_PORT only, defaults to 3000
 npm run dev
 ```
 
-Open http://localhost:3000, fill in the server host/port, the Minecraft version (or bare
-protocol number — auto-detection isn't available without minecraft-data, see above), and
-your Microsoft account email, then click Connect. If it's a new account/server pair you'll
-see a login code — approve it in a browser, then chat starts streaming in.
+Open http://localhost:3000:
+
+1. **Account panel** — enter your Microsoft account email, click 로그인. A login code
+   appears; approve it in a browser.
+2. **서버 추가** — add a server by host/port and version (or bare protocol number — auto
+   version-detection isn't available without minecraft-data, see above).
+3. Click **연결** on a server in the list. If you haven't logged in yet, you'll get a
+   "log in first" prompt instead of a silent failure. Click a server's name to view its
+   chat.
 
 ## Known caveats (unverified against a live server)
 
@@ -65,8 +76,8 @@ see a login code — approve it in a browser, then chat starts streaming in.
 
 ## Notes
 
-- Each session joins as a real player and occupies a server slot — it shows up in the
-  player list like any other connection. There's no way to observe chat invisibly.
+- Each connected server joins as a real player and occupies a server slot — it shows up in
+  the player list like any other connection. There's no way to observe chat invisibly.
 - Read-only: nothing is sent back to the server (no chat, no movement).
-- Sessions live in memory only; restarting the process drops them (reconnect from the
-  dashboard again).
+- Account and server state live in memory only; restarting the process drops them (log in
+  and reconnect from the dashboard again — added servers aren't persisted to disk either).

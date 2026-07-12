@@ -3,7 +3,8 @@ import express from "express";
 import { WebSocketServer, WebSocket } from "ws";
 import { createServer } from "http";
 import path from "path";
-import { createSession, getSession, listSessions, onSessionEvent } from "./sessions";
+import { getAccountState, onAccountEvent, startLogin } from "./account";
+import { addServer, connectServer, getServer, listServers, onServerEvent, NotLoggedInError } from "./servers";
 
 const WEB_PORT = Number(process.env.WEB_PORT ?? 3000);
 
@@ -11,68 +12,87 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "..", "public")));
 
-app.post("/api/sessions", (req, res) => {
-  const { host, port, version, email } = req.body ?? {};
-  if (!host || !email || !version) {
-    res.status(400).json({ error: "host, version, and email are required" });
+app.get("/api/account", (_req, res) => {
+  res.json(getAccountState());
+});
+
+app.post("/api/account/login", (req, res) => {
+  const { email } = req.body ?? {};
+  if (!email) {
+    res.status(400).json({ error: "email is required" });
+    return;
+  }
+  startLogin(String(email));
+  res.status(202).json({ ok: true });
+});
+
+function summarizeServer(s: ReturnType<typeof getServer>) {
+  if (!s) return null;
+  return { id: s.id, host: s.host, port: s.port, version: s.version, status: s.status };
+}
+
+app.get("/api/servers", (_req, res) => {
+  res.json(listServers().map(summarizeServer));
+});
+
+app.post("/api/servers", (req, res) => {
+  const { host, port, version } = req.body ?? {};
+  if (!host || !version) {
+    res.status(400).json({ error: "host and version are required" });
     return;
   }
   try {
-    const session = createSession(String(host), Number(port) || 25565, String(version), String(email));
-    res.status(201).json({ id: session.id });
+    const server = addServer(String(host), Number(port) || 25565, String(version));
+    res.status(201).json(summarizeServer(server));
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
 });
 
-app.get("/api/sessions", (_req, res) => {
-  res.json(
-    listSessions().map((s) => ({ id: s.id, host: s.host, port: s.port, status: s.status }))
-  );
-});
-
-app.get("/api/sessions/:id", (req, res) => {
-  const session = getSession(req.params.id);
-  if (!session) {
-    res.status(404).json({ error: "session not found" });
+app.get("/api/servers/:id", (req, res) => {
+  const server = getServer(req.params.id);
+  if (!server) {
+    res.status(404).json({ error: "server not found" });
     return;
   }
-  res.json(session);
+  res.json({ ...summarizeServer(server), messages: server.messages });
+});
+
+app.post("/api/servers/:id/connect", (req, res) => {
+  try {
+    connectServer(req.params.id);
+    res.json({ ok: true });
+  } catch (err) {
+    if (err instanceof NotLoggedInError) {
+      res.status(409).json({ error: err.message, code: "not-logged-in" });
+      return;
+    }
+    res.status(400).json({ error: (err as Error).message });
+  }
 });
 
 const httpServer = createServer(app);
 const wss = new WebSocketServer({ server: httpServer });
 
-wss.on("connection", (socket, req) => {
-  const url = new URL(req.url ?? "", "http://localhost");
-  const sessionId = url.searchParams.get("sessionId");
-  if (!sessionId) {
-    socket.close(1008, "sessionId query param required");
-    return;
-  }
-  const session = getSession(sessionId);
-  if (!session) {
-    socket.close(1008, "unknown sessionId");
-    return;
-  }
+wss.on("connection", (socket) => {
+  socket.send(JSON.stringify({ type: "account", account: getAccountState() }));
+  socket.send(JSON.stringify({ type: "servers", servers: listServers().map(summarizeServer) }));
 
-  socket.send(
-    JSON.stringify({
-      type: "init",
-      status: session.status,
-      msaCode: session.msaCode,
-      messages: session.messages,
-    })
-  );
-
-  const unsubscribe = onSessionEvent((eventSessionId, payload) => {
-    if (eventSessionId !== sessionId) return;
+  const offAccount = onAccountEvent(() => {
     if (socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify(payload));
+      socket.send(JSON.stringify({ type: "account", account: getAccountState() }));
+    }
+  });
+  const offServer = onServerEvent((serverId, payload) => {
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: "server-event", serverId, payload }));
     }
   });
 
-  socket.on("close", unsubscribe);
+  socket.on("close", () => {
+    offAccount();
+    offServer();
+  });
 });
 
 httpServer.listen(WEB_PORT, () => {
