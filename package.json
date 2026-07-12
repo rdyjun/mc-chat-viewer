@@ -1,0 +1,25 @@
+{
+  "name": "mc-chat-viewer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Connects to a Minecraft server with your own Microsoft account and mirrors chat to a web dashboard.",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "mineflayer": "^4.23.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.10",
+    "@types/ws": "^8.5.10",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.3"
+  }
+}

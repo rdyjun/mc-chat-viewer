@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.env
+# mineflayer/prismarine-auth caches the Microsoft device-code session tokens here after login
+nmp-cache/
+*.log
