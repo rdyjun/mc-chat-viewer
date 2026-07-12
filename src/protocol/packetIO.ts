@@ -1,4 +1,5 @@
 import { readVarInt, writeVarInt } from "./varint";
+import { readNetworkNbt, NbtValue } from "./nbt";
 
 /** Builds an outgoing packet body (packet ID + fields), before length-prefix framing. */
 export class PacketWriter {
@@ -125,5 +126,12 @@ export class PacketReader {
     const bytes = this.buf.subarray(this.offset);
     this.offset = this.buf.length;
     return bytes;
+  }
+
+  /** Reads a network-style (unnamed root) NBT tag, e.g. a Text Component. */
+  readNbt(): NbtValue {
+    const { value, length } = readNetworkNbt(this.buf, this.offset);
+    this.offset += length;
+    return value;
   }
 }

@@ -2,6 +2,7 @@ import { Authflow, Titles } from "prismarine-auth";
 import { EventEmitter } from "events";
 import fs from "fs";
 import path from "path";
+import { fetchPlayerCertificate, PlayerCertificate } from "./protocol/mojangCertificates";
 
 const CACHE_DIR = "./nmp-cache";
 const LAST_EMAIL_FILE = path.join(CACHE_DIR, "last-email.txt");
@@ -24,6 +25,7 @@ interface AccountState {
   email?: string;
   profile?: Profile;
   token?: string;
+  certificate?: PlayerCertificate;
   msaCode: MsaCode | null;
   error?: string;
 }
@@ -41,9 +43,9 @@ export function onAccountEvent(listener: () => void) {
   return () => emitter.off("change", listener);
 }
 
-/** Public view of account state — never includes the raw token. */
-export function getAccountState(): Omit<AccountState, "token"> {
-  const { token, ...rest } = state;
+/** Public view of account state — never includes the raw token or private signing key. */
+export function getAccountState(): Omit<AccountState, "token" | "certificate"> {
+  const { token, certificate, ...rest } = state;
   return rest;
 }
 
@@ -52,6 +54,26 @@ export function getAccessToken(): { token: string; profile: Profile } | null {
     return { token: state.token, profile: state.profile };
   }
   return null;
+}
+
+/**
+ * Returns a valid (non-expired) chat-signing key pair, fetching or refreshing one from Mojang
+ * if needed. Returns null if not logged in or the certificate fetch fails — callers should
+ * treat that as "fall back to unsigned chat," not a hard error.
+ */
+export async function getSigningCertificate(): Promise<PlayerCertificate | null> {
+  if (state.status !== "logged-in" || !state.token) return null;
+  const needsRefresh = !state.certificate || state.certificate.expiresAt < Date.now() + 60_000;
+  if (needsRefresh) {
+    try {
+      const certificate = await fetchPlayerCertificate(state.token);
+      setState({ certificate });
+    } catch (err: any) {
+      console.warn("Failed to fetch chat-signing certificate, falling back to unsigned chat:", err.message);
+      return null;
+    }
+  }
+  return state.certificate ?? null;
 }
 
 /**
@@ -85,7 +107,14 @@ export function startLogin(email: string) {
 }
 
 export function logout() {
-  setState({ status: "logged-out", email: undefined, profile: undefined, token: undefined, msaCode: null });
+  setState({
+    status: "logged-out",
+    email: undefined,
+    profile: undefined,
+    token: undefined,
+    certificate: undefined,
+    msaCode: null,
+  });
   fs.rmSync(LAST_EMAIL_FILE, { force: true });
 }
 

@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { RawMcClient, ChatEvent } from "./protocol/rawClient";
 import { resolveProtocolVersion } from "./protocol/protocolVersions";
-import { getAccessToken } from "./account";
+import { getAccessToken, getSigningCertificate } from "./account";
 
 export interface ChatMessage {
   username: string;
@@ -113,13 +113,17 @@ export function sendChatToServer(id: string, message: string): void {
 }
 
 /** Connects a saved server using the currently logged-in account. Throws NotLoggedInError if none. */
-export function connectServer(id: string): void {
+export async function connectServer(id: string): Promise<void> {
   const server = servers.get(id);
   if (!server) throw new Error("server not found");
   if (server.phase === "active") return; // already connecting/connected, nothing to do
 
   const account = getAccessToken();
   if (!account) throw new NotLoggedInError();
+
+  server.phase = "active"; // set synchronously, before any await, so a second call can't race in
+  setStatus(server, "connecting");
+  const certificate = (await getSigningCertificate()) ?? undefined;
 
   const protocolVersion = resolveProtocolVersion(server.version);
   const client = new RawMcClient({
@@ -128,10 +132,9 @@ export function connectServer(id: string): void {
     protocolVersion,
     accessToken: account.token,
     profile: account.profile,
+    certificate,
   });
   server.client = client;
-  server.phase = "active";
-  setStatus(server, "connecting");
 
   client.on("status", (status: string) => setStatus(server, status));
   client.on("closed", () => {

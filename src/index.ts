@@ -75,9 +75,9 @@ app.get("/api/servers/:id", (req, res) => {
   res.json({ ...summarizeServer(server), messages: server.messages, statusHistory: server.statusHistory });
 });
 
-app.post("/api/servers/:id/connect", (req, res) => {
+app.post("/api/servers/:id/connect", async (req, res) => {
   try {
-    connectServer(req.params.id);
+    await connectServer(req.params.id);
     res.json({ ok: true });
   } catch (err) {
     if (err instanceof NotLoggedInError) {

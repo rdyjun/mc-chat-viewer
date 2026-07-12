@@ -1,9 +1,11 @@
 import assert from "assert";
+import crypto from "crypto";
 import { readVarInt, writeVarInt } from "./varint";
 import { PacketReader, PacketWriter } from "./packetIO";
 import { minecraftServerHash } from "./crypto";
 import { readNetworkNbt } from "./nbt";
 import { textComponentToPlainText } from "./textComponent";
+import { signChatMessage } from "./chatSigning";
 
 // VarInt roundtrip across representative values (0, small, boundary at 1-byte/2-byte cutoff, large).
 for (const v of [0, 1, 127, 128, 255, 300, 25565, 2097151, 2147483647]) {
@@ -146,5 +148,43 @@ assert.strictEqual(
   "[some.unknown.key x]"
 );
 console.log("Known translation-key rendering: OK");
+
+// Chat message signing: self-consistency only — this can't verify the signable-content byte
+// layout matches what the real server expects (see chatSigning.ts's doc comment), just that
+// signChatMessage() produces a correctly-shaped, genuinely-valid RSA-2048 signature (256 bytes,
+// verifiable against the matching public key) rather than garbage or a wrong-length buffer.
+{
+  const { privateKey, publicKey } = crypto.generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const senderUuidHex = "0102030405060708090a0b0c0d0e0f10";
+  const sessionId = Buffer.alloc(16, 7);
+  const timestampMs = Date.now();
+  const signature = signChatMessage(privateKey, senderUuidHex, sessionId, 0, 123n, timestampMs, "hello");
+  assert.strictEqual(signature.length, 256, "RSA-2048 signature must be exactly 256 bytes");
+
+  // Rebuild the exact same signable content independently and verify with crypto.verify,
+  // proving signChatMessage's output is a real signature over its documented byte layout.
+  const parts: Buffer[] = [];
+  const v = Buffer.alloc(4);
+  v.writeInt32BE(1, 0);
+  parts.push(v, Buffer.from(senderUuidHex, "hex"), sessionId);
+  const idx = Buffer.alloc(4);
+  parts.push(idx);
+  const salt = Buffer.alloc(8);
+  salt.writeBigInt64BE(123n, 0);
+  parts.push(salt);
+  const ts = Buffer.alloc(8);
+  ts.writeBigInt64BE(BigInt(Math.floor(timestampMs / 1000)), 0);
+  parts.push(ts);
+  const msg = Buffer.from("hello", "utf8");
+  const msgLen = Buffer.alloc(4);
+  msgLen.writeInt32BE(msg.length, 0);
+  parts.push(msgLen, msg, Buffer.alloc(4));
+  const signableContent = Buffer.concat(parts);
+  assert.ok(
+    crypto.verify("RSA-SHA256", signableContent, publicKey, signature),
+    "signature must verify against the reconstructed signable content"
+  );
+}
+console.log("Chat message signing (self-consistency): OK");
 
 console.log("\nAll protocol smoke checks passed.");

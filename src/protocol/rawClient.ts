@@ -12,6 +12,9 @@ import {
 } from "./crypto";
 import { readNetworkNbt } from "./nbt";
 import { textComponentToPlainText } from "./textComponent";
+import { PlayerCertificate } from "./mojangCertificates";
+import { signChatMessage } from "./chatSigning";
+import crypto from "crypto";
 
 type ConnState = "handshake" | "login" | "configuration" | "play";
 
@@ -32,7 +35,7 @@ const PACKET_IDS = {
   },
   play: {
     clientbound: { DisguisedChatMessage: 33, PlayerChatMessage: 65, KeepAlive: 44, SystemChatMessage: 121 },
-    serverbound: { ChatMessage: 9, KeepAlive: 28 },
+    serverbound: { ChatMessage: 9, PlayerSession: 10, KeepAlive: 28 },
   },
 } as const;
 
@@ -47,6 +50,9 @@ export interface RawClientOptions {
   protocolVersion: number;
   accessToken: string;
   profile: { id: string; name: string }; // id: 32-char hex, no dashes
+  /** If provided, chat messages are cryptographically signed (see sendChat). Servers with
+   * enforce-secure-profile=true reject unsigned chat otherwise. */
+  certificate?: PlayerCertificate;
 }
 
 /**
@@ -81,6 +87,8 @@ export class RawMcClient extends EventEmitter {
   private compressionThreshold = -1;
   private cipher: ReturnType<typeof makeCipherStreams>["cipher"] | null = null;
   private decipher: ReturnType<typeof makeCipherStreams>["decipher"] | null = null;
+  private chatSessionId = crypto.randomBytes(16); // one random session per connection
+  private chatMessageIndex = 0;
 
   constructor(private opts: RawClientOptions) {
     super();
@@ -230,6 +238,20 @@ export class RawMcClient extends EventEmitter {
     this.sendFrame(new PacketWriter(PACKET_IDS.configuration.serverbound.AcknowledgeFinishConfiguration));
     this.state = "play";
     this.emit("status", "Entered play state");
+    if (this.opts.certificate) {
+      this.sendPlayerSession(this.opts.certificate);
+    }
+  }
+
+  /** Registers our signing key pair with the server so it'll accept signed chat from us. */
+  private sendPlayerSession(cert: PlayerCertificate) {
+    const w = new PacketWriter(PACKET_IDS.play.serverbound.PlayerSession)
+      .writeRaw(this.chatSessionId)
+      .writeLong(BigInt(cert.expiresAt))
+      .writePrefixedBytes(cert.publicKeyDer)
+      .writePrefixedBytes(cert.keySignature);
+    this.sendFrame(w);
+    this.emit("status", "Sent chat signing session");
   }
 
   private sendConfigurationPong(payload: Buffer) {
@@ -245,21 +267,41 @@ export class RawMcClient extends EventEmitter {
   }
 
   /**
-   * Sends a plain (unsigned) chat message. Servers with secure chat enforcement enabled
-   * (`enforce-secure-profile=true`) may reject or kick for unsigned messages — full signed
-   * chat would need a per-session key pair from Mojang's player-certificates endpoint and
-   * RSA-signing every message, which isn't implemented here.
+   * Sends a chat message, signed if a certificate was provided (see RawClientOptions),
+   * otherwise plain/unsigned. Servers with secure chat enforcement enabled
+   * (`enforce-secure-profile=true`) reject unsigned messages with a clean
+   * chat.disabled.missingProfileKey response (not a crash or kick).
    */
   sendChat(message: string) {
     if (this.state !== "play") {
       throw new Error("Not connected (not in play state yet)");
     }
+    const cert = this.opts.certificate;
+    const timestampMs = Date.now();
+    const salt = cert ? crypto.randomBytes(8).readBigInt64BE(0) : 0n;
+    const index = this.chatMessageIndex++;
+
     const w = new PacketWriter(PACKET_IDS.play.serverbound.ChatMessage)
       .writeString(message)
-      .writeLong(BigInt(Date.now()))
-      .writeLong(0n) // salt: 0 signals "not actually signed"
-      .writeBoolean(false) // has signature: false (unsigned)
-      .writeVarInt(0) // message count acknowledged
+      .writeLong(BigInt(timestampMs))
+      .writeLong(salt);
+
+    if (cert) {
+      const signature = signChatMessage(
+        cert.privateKey,
+        this.opts.profile.id,
+        this.chatSessionId,
+        index,
+        salt,
+        timestampMs,
+        message
+      );
+      w.writeBoolean(true).writeRaw(signature); // fixed 256 bytes, no separate length prefix
+    } else {
+      w.writeBoolean(false);
+    }
+
+    w.writeVarInt(0) // message count acknowledged
       .writeRaw(Buffer.alloc(3)) // fixed 20-bit "acknowledged" bitset, all-zero (nothing tracked)
       .writeRaw(Buffer.from([0])); // checksum over the last-seen set's signatures — 0 since we track none
     this.sendFrame(w);
@@ -344,18 +386,41 @@ export class RawMcClient extends EventEmitter {
   }
 
   /**
-   * Best-effort: the exact field layout for this version couldn't be confirmed against
-   * documentation (only ~776 docs were available, this server runs 775). Wrapped so a layout
-   * mismatch degrades to a placeholder instead of corrupting the read loop.
+   * Field layout confirmed against minecraft.wiki's Player Chat Message section (fetched via
+   * the parse API directly, same approach that found the serverbound Chat packet's missing
+   * Checksum byte): Global Index, Sender UUID, Index, Message Signature (prefixed optional,
+   * fixed 256 bytes), Message, Timestamp, Salt, Previous Messages (prefixed array of {Message
+   * ID, [Signature if ID==0]}), Unsigned Content (prefixed optional Text Component), Filter
+   * Type (+ Filter Type Bits if partially filtered), Chat Type, Sender Name, Target Name
+   * (prefixed optional). We only need Message (and Unsigned Content, when present, is the
+   * nicer decorated version of it) — the rest is parsed just to stay correctly positioned in
+   * case a future caller wants it, though nothing past Message currently affects the emitted
+   * chat text.
    */
   private handlePlayerChatMessage(reader: PacketReader) {
     try {
+      reader.readVarInt(); // global index
       reader.readUUID(); // sender
       reader.readVarInt(); // index
       const hasSignature = reader.readBoolean();
       if (hasSignature) reader.readFixedBytes(256); // fixed-length signature, no length prefix
       const message = reader.readString();
-      this.emit("chat", { text: message, raw: "player" } as ChatEvent);
+      reader.readLong(); // timestamp
+      reader.readLong(); // salt
+
+      const previousCount = reader.readVarInt();
+      for (let i = 0; i < previousCount; i++) {
+        const messageId = reader.readVarInt(); // "message ID + 1"; 0 means "not a known message"
+        if (messageId === 0) reader.readFixedBytes(256);
+      }
+
+      let displayText = message;
+      const hasUnsignedContent = reader.readBoolean();
+      if (hasUnsignedContent) {
+        displayText = textComponentToPlainText(reader.readNbt());
+      }
+
+      this.emit("chat", { text: displayText, raw: "player" } as ChatEvent);
     } catch {
       this.emit("chat", { text: "[플레이어 채팅 메시지 — 파싱 실패]", raw: "player" } as ChatEvent);
     }

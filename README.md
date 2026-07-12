@@ -59,36 +59,51 @@ Open http://localhost:3000:
    "log in first" prompt instead of a silent failure. Click a server's name to view its
    chat.
 
+## Chat signing
+
+Chat is signed by default once logged in: `src/account.ts` fetches an RSA key pair from
+Mojang's `/player/certificates` endpoint, `RawMcClient` registers it with the server via
+the Player Session packet on entering play, and every `sendChat()` call signs the message
+with it (`src/protocol/chatSigning.ts`). If certificate fetch fails for any reason, chat
+falls back to unsigned automatically — servers with secure-chat enforcement will then
+reject it with a clean `chat.disabled.missingProfileKey` message instead of sending it (no
+crash, no kick). Verified end-to-end against a live server: sign, send, get broadcast back,
+and correctly re-parsed.
+
+Two non-obvious bugs surfaced while wiring this up, in case they resurface for a different
+server version:
+- Mojang's returned public key PEM is labeled `RSA PUBLIC KEY` (implying PKCS#1) but its
+  DER content is actually X.509 SubjectPublicKeyInfo. Node's `createPublicKey` cross-checks
+  the PEM header against the requested `type` and rejects the mismatch regardless of
+  whether the DER itself is valid — worked around by decoding the PEM body ourselves
+  instead of asking Node to parse the whole PEM (`pemBodyToDer` in `mojangCertificates.ts`).
+- The private key PEM needs `type: "pkcs1"` passed explicitly; header-only auto-detection
+  isn't reliable in Node.
+
 ## Known caveats
 
-- **Chat is unsigned.** Servers with secure-chat enforcement on (many are, by default)
-  reject it with `chat.disabled.missingProfileKey` instead of sending it — no crash, no
-  kick, just a rejection message rendered straight into the chat log. Real signed chat
-  needs a per-session key pair from Mojang's `/player/certificates` endpoint plus
-  RSA-signing every message; not implemented (see "How auth works" — this is a separate
-  Mojang API from login).
-- **Player Chat Message** (regular player-to-player chat) field layout is filled in from
-  general protocol knowledge, not a confirmed source for this version — if the layout is
-  wrong you'll see a `[플레이어 채팅 메시지 — 파싱 실패]` placeholder instead of a crash
-  (parsing failures are caught and can never desync the packet stream), but the message
-  text itself will be lost for that entry. System/disguised chat messages (which is what
-  most server activity — joins, leaves, server broadcasts — actually is) use a simpler,
-  confirmed-working format.
+- The exact byte layout `chatSigning.ts` signs over (mirroring vanilla's
+  SignedMessageBody format) couldn't be confirmed against a spec for this exact server
+  version — it's inferred from general protocol knowledge. It's evidently correct (the live
+  server accepted a signed message), but if a different server rejects signed chat as
+  invalid, this is the place to double-check.
 - Client Information (locale/render-distance/etc.) is deliberately never sent — a live
   server rejected our attempt with a decoder exception, its exact layout having changed
   since whatever version's docs were available, and none of that data matters for a
   read-only-by-default chat client anyway. Servers use defaults when it's never sent.
 - If something doesn't work, the dashboard's "연결 로그" panel (or the server console log)
   will show which packet/state failed — that's the starting point for fixing the relevant
-  packet in `src/protocol/rawClient.ts`. The Client Information and Chat message bugs were
-  both found and fixed exactly this way, against a live server.
+  packet in `src/protocol/rawClient.ts`. Every protocol bug found so far (the handshake
+  state-machine bug, the missing Chat Checksum byte, the missing Player Chat Message Global
+  Index field, the PEM parsing issues above) was found and fixed exactly this way, against
+  a live server.
 
 ## Notes
 
 - Each connected server joins as a real player and occupies a server slot — it shows up in
   the player list like any other connection. There's no way to observe chat invisibly.
-- Chat sending is supported (unsigned only, see caveats) via the input under each server's
-  message log; nothing else is sent back to the server (no movement, no commands beyond
-  plain chat).
+- Chat sending is supported (signed, falling back to unsigned — see above) via the input
+  under each server's message log; nothing else is sent back to the server (no movement, no
+  commands beyond plain chat).
 - Account and server state live in memory only; restarting the process drops them (log in
   and reconnect from the dashboard again — added servers aren't persisted to disk either).
