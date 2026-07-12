@@ -25,12 +25,7 @@ function emit(sessionId: string, payload: unknown) {
   listeners.forEach((l) => l(sessionId, payload));
 }
 
-export function createSession(
-  host: string,
-  port: number,
-  version: string | undefined,
-  email: string
-): Session {
+export function createSession(host: string, port: number, version: string, email: string): Session {
   const id = randomUUID();
   const session: Session = { id, host, port, status: "connecting", msaCode: null, messages: [] };
   sessions.set(id, session);

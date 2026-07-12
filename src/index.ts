@@ -13,12 +13,16 @@ app.use(express.static(path.join(__dirname, "..", "public")));
 
 app.post("/api/sessions", (req, res) => {
   const { host, port, version, email } = req.body ?? {};
-  if (!host || !email) {
-    res.status(400).json({ error: "host and email are required" });
+  if (!host || !email || !version) {
+    res.status(400).json({ error: "host, version, and email are required" });
     return;
   }
-  const session = createSession(String(host), Number(port) || 25565, version || undefined, String(email));
-  res.status(201).json({ id: session.id });
+  try {
+    const session = createSession(String(host), Number(port) || 25565, String(version), String(email));
+    res.status(201).json({ id: session.id });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
 app.get("/api/sessions", (_req, res) => {

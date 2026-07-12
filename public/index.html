@@ -33,7 +33,7 @@
         <input name="host" placeholder="서버 주소 (예: mc.example.net)" required />
         <input name="port" placeholder="포트 (기본 25565)" />
         <input name="email" placeholder="Microsoft 계정 이메일" required />
-        <input name="version" placeholder="버전 (선택, 예: 1.20.4)" />
+        <input name="version" placeholder="버전 (필수, 예: 26.1.2 또는 프로토콜 번호 775)" required />
         <button type="submit">연결</button>
       </form>
       <h2 style="margin-top:1rem">세션</h2>
@@ -130,7 +130,8 @@
         body: JSON.stringify(data),
       });
       if (!res.ok) {
-        alert("연결 실패: " + (await res.text()));
+        const body = await res.json().catch(() => ({ error: res.statusText }));
+        alert("연결 실패: " + body.error);
         return;
       }
       const { id } = await res.json();
