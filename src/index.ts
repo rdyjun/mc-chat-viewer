@@ -3,7 +3,7 @@ import express from "express";
 import { WebSocketServer, WebSocket } from "ws";
 import { createServer } from "http";
 import path from "path";
-import { getAccountState, onAccountEvent, startLogin } from "./account";
+import { getAccountState, onAccountEvent, startLogin, tryResumeSession } from "./account";
 import {
   addServer,
   connectServer,
@@ -124,4 +124,5 @@ wss.on("connection", (socket) => {
 
 httpServer.listen(WEB_PORT, () => {
   console.log(`Dashboard: http://localhost:${WEB_PORT}`);
+  tryResumeSession();
 });
