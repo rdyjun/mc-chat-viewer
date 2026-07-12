@@ -260,7 +260,8 @@ export class RawMcClient extends EventEmitter {
       .writeLong(0n) // salt: 0 signals "not actually signed"
       .writeBoolean(false) // has signature: false (unsigned)
       .writeVarInt(0) // message count acknowledged
-      .writeRaw(Buffer.alloc(3)); // fixed 20-bit "acknowledged" bitset, all-zero (nothing tracked)
+      .writeRaw(Buffer.alloc(3)) // fixed 20-bit "acknowledged" bitset, all-zero (nothing tracked)
+      .writeRaw(Buffer.from([0])); // checksum over the last-seen set's signatures — 0 since we track none
     this.sendFrame(w);
   }
 

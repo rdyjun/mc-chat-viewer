@@ -10,6 +10,7 @@ const KNOWN_TRANSLATIONS: Record<string, string> = {
   "multiplayer.player.left": "%s left the game",
   "chat.type.text": "<%s> %s",
   "chat.type.announcement": "[%s] %s",
+  "chat.disabled.missingProfileKey": "Chat message rejected: this server requires signed chat, and we send unsigned messages (see README's Known Caveats)",
 };
 
 /** Best-effort flattening of a Text Component (NBT or parsed JSON) into plain display text. */

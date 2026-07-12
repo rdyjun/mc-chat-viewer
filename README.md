@@ -25,9 +25,10 @@ directly (no need to reimplement OAuth).
 
 `src/protocol/smoke-test.ts` (`npm run test`) checks the deterministic parts (VarInt
 encoding, packet field roundtrips, the Minecraft server-hash algorithm against wiki.vg's
-published test vectors, NBT text-component decoding) without needing a live server. The
-parts that can only be verified against a real server (exact Configuration-state packet
-IDs, the Player Chat Message field layout) are best-effort — see the caveats below.
+published test vectors, NBT text-component decoding, the serverbound Chat packet's field
+layout) without needing a live server. The full flow — handshake through encryption,
+compression, login, configuration, and play — has been verified against a real 26.1.2
+server (see caveats below for what's still best-effort).
 
 ## How auth works
 
@@ -58,26 +59,36 @@ Open http://localhost:3000:
    "log in first" prompt instead of a silent failure. Click a server's name to view its
    chat.
 
-## Known caveats (unverified against a live server)
+## Known caveats
 
-- **Configuration-state packet IDs** (Finish Configuration, Known Packs, Ping) were pulled
-  from the Minecraft Wiki's "current" docs (protocol 776 / MC 26.2), one release ahead of
-  what most 26.1.x servers run (protocol 775). IDs are usually stable release-to-release
-  but could be off by one for this specific version.
+- **Chat is unsigned.** Servers with secure-chat enforcement on (many are, by default)
+  reject it with `chat.disabled.missingProfileKey` instead of sending it — no crash, no
+  kick, just a rejection message rendered straight into the chat log. Real signed chat
+  needs a per-session key pair from Mojang's `/player/certificates` endpoint plus
+  RSA-signing every message; not implemented (see "How auth works" — this is a separate
+  Mojang API from login).
 - **Player Chat Message** (regular player-to-player chat) field layout is filled in from
   general protocol knowledge, not a confirmed source for this version — if the layout is
   wrong you'll see a `[플레이어 채팅 메시지 — 파싱 실패]` placeholder instead of a crash
   (parsing failures are caught and can never desync the packet stream), but the message
-  text itself will be lost for that entry. System/disguised chat messages use a simpler,
-  more confidently-implemented format.
-- If something doesn't work, the dashboard status line and server console log will show
-  which packet ID/state failed — that's the starting point for adjusting the IDs in
-  `src/protocol/rawClient.ts`.
+  text itself will be lost for that entry. System/disguised chat messages (which is what
+  most server activity — joins, leaves, server broadcasts — actually is) use a simpler,
+  confirmed-working format.
+- Client Information (locale/render-distance/etc.) is deliberately never sent — a live
+  server rejected our attempt with a decoder exception, its exact layout having changed
+  since whatever version's docs were available, and none of that data matters for a
+  read-only-by-default chat client anyway. Servers use defaults when it's never sent.
+- If something doesn't work, the dashboard's "연결 로그" panel (or the server console log)
+  will show which packet/state failed — that's the starting point for fixing the relevant
+  packet in `src/protocol/rawClient.ts`. The Client Information and Chat message bugs were
+  both found and fixed exactly this way, against a live server.
 
 ## Notes
 
 - Each connected server joins as a real player and occupies a server slot — it shows up in
   the player list like any other connection. There's no way to observe chat invisibly.
-- Read-only: nothing is sent back to the server (no chat, no movement).
+- Chat sending is supported (unsigned only, see caveats) via the input under each server's
+  message log; nothing else is sent back to the server (no movement, no commands beyond
+  plain chat).
 - Account and server state live in memory only; restarting the process drops them (log in
   and reconnect from the dashboard again — added servers aren't persisted to disk either).

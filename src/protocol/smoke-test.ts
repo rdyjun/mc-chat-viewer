@@ -52,7 +52,9 @@ console.log("PacketWriter/Reader roundtrip: OK");
     .writeLong(0n)
     .writeBoolean(false)
     .writeVarInt(0)
-    .writeRaw(Buffer.alloc(3));
+    .writeRaw(Buffer.alloc(3))
+    .writeRaw(Buffer.from([0])); // trailing checksum byte (easy to miss — a real server rejected
+  // this packet without it: "Failed to decode packet 'serverbound/minecraft:chat'")
   const chatBuilt = chatW.build();
   const chatIdInfo = readVarInt(chatBuilt, 0);
   assert.strictEqual(chatIdInfo.value, 9);
@@ -63,6 +65,7 @@ console.log("PacketWriter/Reader roundtrip: OK");
   assert.strictEqual(cr.readBoolean(), false);
   assert.strictEqual(cr.readVarInt(), 0);
   assert.deepStrictEqual([...cr.readFixedBytes(3)], [0, 0, 0]);
+  assert.deepStrictEqual([...cr.readFixedBytes(1)], [0]);
   assert.strictEqual(cr.remaining, 0);
 }
 console.log("Serverbound Chat Message field roundtrip: OK");
