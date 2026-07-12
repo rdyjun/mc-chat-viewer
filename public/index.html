@@ -113,7 +113,7 @@
       servers.forEach((s) => {
         const li = document.createElement("li");
         li.className = s.id === selectedServerId ? "selected" : "";
-        const canConnect = s.status === "idle" || s.status === "error" || s.status.startsWith("Disconnected");
+        const canConnect = s.phase !== "active";
         li.innerHTML =
           '<div class="server-row">' +
           '<span class="server-meta">' + escapeHtml(s.host) + ':' + s.port + '</span>' +
@@ -206,7 +206,10 @@
       } else if (data.type === "server-event") {
         const s = servers.find((x) => x.id === data.serverId);
         if (data.payload.type === "status") {
-          if (s) s.status = data.payload.status;
+          if (s) {
+            s.status = data.payload.status;
+            if (data.payload.phase) s.phase = data.payload.phase;
+          }
           renderServers();
           if (data.serverId === selectedServerId) {
             chatStatusEl.textContent = (s ? s.host + ":" + s.port : "") + " — " + data.payload.status;

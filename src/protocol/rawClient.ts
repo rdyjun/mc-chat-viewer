@@ -60,6 +60,20 @@ export interface RawClientOptions {
  * whether we understand its contents, so an unrecognized or mis-parsed packet can never
  * desync the stream — worst case we just miss/garble that one packet's meaning.
  */
+
+/**
+ * Node wraps "localhost" connection failures in an AggregateError (it tries both the IPv4 and
+ * IPv6 resolutions and both fail), whose own .message is empty — the useful text is in
+ * .errors[]. Unwrap that so status messages are never a blank "Socket error: ".
+ */
+function describeError(err: Error): string {
+  const withErrors = err as Error & { errors?: Error[] };
+  if (withErrors.errors?.length) {
+    return withErrors.errors.map((e) => e.message).join("; ");
+  }
+  return err.message || err.toString();
+}
+
 export class RawMcClient extends EventEmitter {
   private socket: net.Socket;
   private state: ConnState = "handshake";
@@ -75,8 +89,11 @@ export class RawMcClient extends EventEmitter {
 
   connect() {
     this.socket.on("data", (chunk) => this.onData(chunk));
-    this.socket.on("error", (err) => this.emit("status", `Socket error: ${err.message}`));
-    this.socket.on("close", () => this.emit("status", "Connection closed"));
+    this.socket.on("error", (err) => this.emit("status", `Socket error: ${describeError(err)}`));
+    this.socket.on("close", () => {
+      this.emit("status", "Connection closed");
+      this.emit("closed"); // distinct from "status": tells listeners a retry is now safe
+    });
 
     this.socket.connect(this.opts.port, this.opts.host, () => {
       this.emit("status", "TCP connected, sending handshake");

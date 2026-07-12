@@ -28,7 +28,7 @@ app.post("/api/account/login", (req, res) => {
 
 function summarizeServer(s: ReturnType<typeof getServer>) {
   if (!s) return null;
-  return { id: s.id, host: s.host, port: s.port, version: s.version, status: s.status };
+  return { id: s.id, host: s.host, port: s.port, version: s.version, status: s.status, phase: s.phase };
 }
 
 app.get("/api/servers", (_req, res) => {
