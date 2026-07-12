@@ -17,8 +17,8 @@ type ConnState = "handshake" | "login" | "configuration" | "play";
 
 const PACKET_IDS = {
   login: {
-    clientbound: { Disconnect: 0, EncryptionRequest: 1, LoginSuccess: 2, SetCompression: 3 },
-    serverbound: { LoginStart: 0, EncryptionResponse: 1, LoginAcknowledged: 3 },
+    clientbound: { Disconnect: 0, EncryptionRequest: 1, LoginSuccess: 2, SetCompression: 3, LoginPluginRequest: 4 },
+    serverbound: { LoginStart: 0, EncryptionResponse: 1, LoginPluginResponse: 2, LoginAcknowledged: 3 },
   },
   configuration: {
     clientbound: { CookieRequest: 0, Disconnect: 2, FinishConfiguration: 3, Ping: 5, SelectKnownPacks: 14 },
@@ -164,6 +164,12 @@ export class RawMcClient extends EventEmitter {
       .writeUnsignedShort(this.opts.port)
       .writeVarInt(2); // next state: login
     this.sendFrame(w);
+    // The handshake's "next state" field only tells the *server* to switch — our own state
+    // machine has to flip too, or handlePacket()'s switch (which has no "handshake" case) will
+    // silently drop every packet we receive from here on. This is the reason connections kept
+    // timing out: the server would send an Encryption Request that we genuinely received but
+    // just never processed, so it eventually gave up waiting for our response.
+    this.state = "login";
   }
 
   private sendLoginStart() {
@@ -197,24 +203,22 @@ export class RawMcClient extends EventEmitter {
     this.emit("status", "Encryption enabled");
   }
 
+  private sendLoginPluginResponse(messageId: number) {
+    const w = new PacketWriter(PACKET_IDS.login.serverbound.LoginPluginResponse)
+      .writeVarInt(messageId)
+      .writeBoolean(false); // "successful: false" — we don't understand this channel
+    this.sendFrame(w);
+  }
+
   private sendLoginAcknowledged() {
     this.sendFrame(new PacketWriter(PACKET_IDS.login.serverbound.LoginAcknowledged));
     this.state = "configuration";
     this.emit("status", "Entered configuration state");
-    this.sendClientInformation();
-  }
-
-  private sendClientInformation() {
-    const w = new PacketWriter(PACKET_IDS.configuration.serverbound.ClientInformation)
-      .writeString("en_US")
-      .writeRaw(Buffer.from([8])) // view distance (byte)
-      .writeVarInt(0) // chat mode: enabled
-      .writeBoolean(true) // chat colors
-      .writeRaw(Buffer.from([0x7f])) // displayed skin parts: all
-      .writeVarInt(1) // main hand: right
-      .writeBoolean(false) // text filtering
-      .writeBoolean(true); // allow server listings
-    this.sendFrame(w);
+    // Deliberately not sending Client Information: its field layout (view distance, chat
+    // mode, skin parts, etc.) has changed across versions — a real server rejected our attempt
+    // with "Failed to decode packet 'serverbound/minecraft:client_information'" — and none of
+    // that data matters for a read-only chat client anyway. Servers use sane defaults when it's
+    // never sent.
   }
 
   private sendKnownPacksEmpty() {
@@ -270,6 +274,12 @@ export class RawMcClient extends EventEmitter {
         return this.handleConfigurationPacket(id, reader);
       case "play":
         return this.handlePlayPacket(id, reader);
+      case "handshake":
+        // We should never still be in "handshake" once a packet arrives — sendHandshake()
+        // flips state to "login" immediately after sending. If this fires, that transition
+        // broke again; surface it loudly instead of silently dropping the packet.
+        this.emit("status", `Received packet id=${id} while still in handshake state (bug)`);
+        return;
     }
   }
 
@@ -287,6 +297,18 @@ export class RawMcClient extends EventEmitter {
     } else if (id === P.LoginSuccess) {
       this.emit("status", "Login success");
       this.sendLoginAcknowledged();
+    } else if (id === P.LoginPluginRequest) {
+      // Sent by some proxies/plugins (e.g. Velocity forwarding, auth plugins) to challenge the
+      // client with a custom channel before login can finish. We support no plugin channels, so
+      // we must still reply with "unsuccessful" — silently ignoring this packet (the previous
+      // bug) left the server waiting for a response that never came, until it gave up and
+      // disconnected us for a timeout.
+      const messageId = reader.readVarInt();
+      const channel = reader.readString();
+      this.emit("status", `Login plugin request on unsupported channel "${channel}", declining`);
+      this.sendLoginPluginResponse(messageId);
+    } else {
+      this.emit("status", `Unhandled login packet id=${id}`);
     }
   }
 

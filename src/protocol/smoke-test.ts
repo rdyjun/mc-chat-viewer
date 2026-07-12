@@ -128,4 +128,20 @@ console.log("NBT simple string: OK");
 }
 console.log("NBT compound + text component flattening: OK");
 
+// Known translatable components (join/leave/chat-line) render as readable English, unknown
+// ones fall back to showing the raw key so nothing silently disappears.
+assert.strictEqual(
+  textComponentToPlainText({ translate: "multiplayer.player.joined", with: ["geenee10"] }),
+  "geenee10 joined the game"
+);
+assert.strictEqual(
+  textComponentToPlainText({ translate: "chat.type.text", with: ["Alice", "hi there"] }),
+  "<Alice> hi there"
+);
+assert.strictEqual(
+  textComponentToPlainText({ translate: "some.unknown.key", with: ["x"] }),
+  "[some.unknown.key x]"
+);
+console.log("Known translation-key rendering: OK");
+
 console.log("\nAll protocol smoke checks passed.");
