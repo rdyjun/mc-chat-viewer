@@ -125,10 +125,11 @@
         const li = document.createElement("li");
         li.className = s.id === selectedServerId ? "selected" : "";
         const canConnect = s.phase !== "active";
+        const label = canConnect ? "연결" : (s.connected ? "연결됨" : "연결중");
         li.innerHTML =
           '<div class="server-row">' +
           '<span class="server-meta">' + escapeHtml(s.host) + ':' + s.port + '</span>' +
-          '<button ' + (canConnect ? "" : "disabled") + '>' + (canConnect ? "연결" : "연결중") + '</button>' +
+          '<button ' + (canConnect ? "" : "disabled") + '>' + label + '</button>' +
           '</div>' +
           '<div class="server-status">' + escapeHtml(s.status) + '</div>';
 
@@ -253,6 +254,7 @@
           if (s) {
             s.status = data.payload.status;
             if (data.payload.phase) s.phase = data.payload.phase;
+            s.connected = !!data.payload.connected;
           }
           renderServers();
           if (data.serverId === selectedServerId) {

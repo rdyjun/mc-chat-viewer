@@ -25,6 +25,11 @@ export interface ServerConfig {
   /** Every status change, timestamped — the single `status` field only ever shows the latest
    * one, which hides brief-but-important states (e.g. a socket error right before close). */
   statusHistory: StatusEntry[];
+  /** True once the connection has actually reached the play state — distinct from `phase`,
+   * which is just "is a connect attempt in flight" and stays "active" the whole time you're
+   * happily connected (so the dashboard button alone can't tell "still connecting" from
+   * "connected and staying that way"). */
+  connected: boolean;
   messages: ChatMessage[];
   client?: RawMcClient;
 }
@@ -46,11 +51,19 @@ function emit(serverId: string, payload: unknown) {
 
 function setStatus(server: ServerConfig, status: string) {
   server.status = status;
+  server.connected = server.client?.isPlaying ?? false;
   const entry: StatusEntry = { status, timestamp: Date.now() };
   server.statusHistory.push(entry);
   if (server.statusHistory.length > MAX_HISTORY) server.statusHistory.shift();
   console.log(`[${server.host}:${server.port}] ${status}`);
-  emit(server.id, { type: "status", status, phase: server.phase, timestamp: entry.timestamp, logged: true });
+  emit(server.id, {
+    type: "status",
+    status,
+    phase: server.phase,
+    connected: server.connected,
+    timestamp: entry.timestamp,
+    logged: true,
+  });
 }
 
 /** Adds a server to the saved list. Does not connect — call connectServer() for that. */
@@ -65,6 +78,7 @@ export function addServer(host: string, port: number, version: string): ServerCo
     status: "idle",
     phase: "idle",
     statusHistory: [],
+    connected: false,
     messages: [],
   };
   servers.set(id, server);
@@ -122,8 +136,16 @@ export function connectServer(id: string): void {
   client.on("status", (status: string) => setStatus(server, status));
   client.on("closed", () => {
     server.phase = "closed"; // allows a fresh connectServer() call to retry
+    server.connected = false;
     // re-broadcast (no new history entry) so the dashboard's Connect button re-enables
-    emit(id, { type: "status", status: server.status, phase: server.phase, timestamp: Date.now(), logged: false });
+    emit(id, {
+      type: "status",
+      status: server.status,
+      phase: server.phase,
+      connected: server.connected,
+      timestamp: Date.now(),
+      logged: false,
+    });
   });
   client.on("chat", (evt: ChatEvent) => {
     const msg: ChatMessage = { username: account.profile.name, message: evt.text, timestamp: Date.now() };
