@@ -9,6 +9,11 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+export interface StatusEntry {
+  status: string;
+  timestamp: number;
+}
+
 export interface ServerConfig {
   id: string;
   host: string;
@@ -17,6 +22,9 @@ export interface ServerConfig {
   status: string; // free-text display status (from the client, or "idle" before any attempt)
   /** Coarse state driving whether a new connect attempt is allowed — `status` is just display text. */
   phase: "idle" | "active" | "closed";
+  /** Every status change, timestamped — the single `status` field only ever shows the latest
+   * one, which hides brief-but-important states (e.g. a socket error right before close). */
+  statusHistory: StatusEntry[];
   messages: ChatMessage[];
   client?: RawMcClient;
 }
@@ -36,11 +44,29 @@ function emit(serverId: string, payload: unknown) {
   listeners.forEach((l) => l(serverId, payload));
 }
 
+function setStatus(server: ServerConfig, status: string) {
+  server.status = status;
+  const entry: StatusEntry = { status, timestamp: Date.now() };
+  server.statusHistory.push(entry);
+  if (server.statusHistory.length > MAX_HISTORY) server.statusHistory.shift();
+  console.log(`[${server.host}:${server.port}] ${status}`);
+  emit(server.id, { type: "status", status, phase: server.phase, timestamp: entry.timestamp, logged: true });
+}
+
 /** Adds a server to the saved list. Does not connect — call connectServer() for that. */
 export function addServer(host: string, port: number, version: string): ServerConfig {
   resolveProtocolVersion(version); // validate early so a bad version fails at add-time, not connect-time
   const id = randomUUID();
-  const server: ServerConfig = { id, host, port, version, status: "idle", phase: "idle", messages: [] };
+  const server: ServerConfig = {
+    id,
+    host,
+    port,
+    version,
+    status: "idle",
+    phase: "idle",
+    statusHistory: [],
+    messages: [],
+  };
   servers.set(id, server);
   return server;
 }
@@ -91,17 +117,13 @@ export function connectServer(id: string): void {
   });
   server.client = client;
   server.phase = "active";
-  server.status = "connecting";
-  emit(id, { type: "status", status: server.status, phase: server.phase });
+  setStatus(server, "connecting");
 
-  client.on("status", (status: string) => {
-    server.status = status;
-    console.log(`[${server.host}:${server.port}] ${status}`);
-    emit(id, { type: "status", status, phase: server.phase });
-  });
+  client.on("status", (status: string) => setStatus(server, status));
   client.on("closed", () => {
     server.phase = "closed"; // allows a fresh connectServer() call to retry
-    emit(id, { type: "status", status: server.status, phase: server.phase });
+    // re-broadcast (no new history entry) so the dashboard's Connect button re-enables
+    emit(id, { type: "status", status: server.status, phase: server.phase, timestamp: Date.now(), logged: false });
   });
   client.on("chat", (evt: ChatEvent) => {
     const msg: ChatMessage = { username: account.profile.name, message: evt.text, timestamp: Date.now() };

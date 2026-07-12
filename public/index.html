@@ -26,7 +26,9 @@
   .server-status { color: #9ad; font-size: 0.75rem; }
   #chatPanel { flex: 1; }
   #chatStatus { color: #9ad; font-size: 0.85rem; margin-bottom: 0.5rem; }
-  #log { height: 60vh; overflow-y: auto; }
+  #statusLog { height: 8rem; overflow-y: auto; background: #1a1a1a; border-radius: 6px; padding: 0.4rem 0.6rem; margin-bottom: 0.75rem; font-family: monospace; font-size: 0.78rem; }
+  #statusLog .line { border-bottom: none; color: #8c8; padding: 0.1rem 0; }
+  #log { height: 50vh; overflow-y: auto; }
   .line { padding: 0.2rem 0; border-bottom: 1px solid #333; font-size: 0.9rem; word-break: break-word; }
   .time { color: #888; font-size: 0.8rem; margin-right: 0.5rem; }
 </style>
@@ -60,6 +62,9 @@
 
     <div class="panel" id="chatPanel">
       <div id="chatStatus">서버를 추가하고 연결해보세요.</div>
+      <h2>연결 로그</h2>
+      <div id="statusLog"></div>
+      <h2>채팅</h2>
       <div id="log"></div>
       <form id="chatForm" style="display:flex; gap:0.5rem; margin-top:0.75rem;">
         <input name="message" placeholder="채팅 입력 (서명 안 된 메시지라 secure chat 강제 서버에서는 안 될 수 있음)" style="flex:1" />
@@ -77,6 +82,7 @@
     const chatStatusEl = document.getElementById("chatStatus");
     const chatForm = document.getElementById("chatForm");
     const logEl = document.getElementById("log");
+    const statusLogEl = document.getElementById("statusLog");
 
     let account = { status: "logged-out", msaCode: null };
     let servers = [];
@@ -146,6 +152,8 @@
       chatStatusEl.textContent = detail.host + ":" + detail.port + " — " + detail.status;
       logEl.innerHTML = "";
       detail.messages.forEach((m) => addLine(m.message, m.timestamp));
+      statusLogEl.innerHTML = "";
+      detail.statusHistory.forEach((s) => addStatusLine(s.status, s.timestamp));
     }
 
     async function connectServer(id) {
@@ -171,6 +179,15 @@
       div.innerHTML = '<span class="time">' + t + '</span>' + escapeHtml(text);
       logEl.appendChild(div);
       logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function addStatusLine(text, time) {
+      const div = document.createElement("div");
+      div.className = "line";
+      const t = new Date(time).toLocaleTimeString();
+      div.innerHTML = '<span class="time">' + t + '</span>' + escapeHtml(text);
+      statusLogEl.appendChild(div);
+      statusLogEl.scrollTop = statusLogEl.scrollHeight;
     }
 
     accountForm.addEventListener("submit", async (e) => {
@@ -240,6 +257,7 @@
           renderServers();
           if (data.serverId === selectedServerId) {
             chatStatusEl.textContent = (s ? s.host + ":" + s.port : "") + " — " + data.payload.status;
+            if (data.payload.logged) addStatusLine(data.payload.status, data.payload.timestamp);
           }
         } else if (data.payload.type === "chat" && data.serverId === selectedServerId) {
           addLine(data.payload.message.message, data.payload.message.timestamp);

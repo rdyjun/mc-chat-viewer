@@ -64,7 +64,7 @@ app.get("/api/servers/:id", (req, res) => {
     res.status(404).json({ error: "server not found" });
     return;
   }
-  res.json({ ...summarizeServer(server), messages: server.messages });
+  res.json({ ...summarizeServer(server), messages: server.messages, statusHistory: server.statusHistory });
 });
 
 app.post("/api/servers/:id/connect", (req, res) => {
