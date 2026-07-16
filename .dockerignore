@@ -1,6 +1,7 @@
 node_modules
 dist
 nmp-cache
+data
 .env
 .git
 .omc

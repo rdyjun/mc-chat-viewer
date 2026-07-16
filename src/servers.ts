@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { RawMcClient, ChatEvent } from "./protocol/rawClient";
 import { resolveProtocolVersion } from "./protocol/protocolVersions";
 import { getAccessToken, getSigningCertificate } from "./account";
+import { insertServerRow, linkUserServer, listAllServerRows, listServerRowsForUser, isServerOwnedByUser } from "./db";
 
 export interface ChatMessage {
   username: string;
@@ -37,6 +38,22 @@ export interface ServerConfig {
 const MAX_HISTORY = 200;
 const servers = new Map<string, ServerConfig>();
 
+// Rehydrate the in-memory registry from persisted rows on startup — runtime-only fields
+// (status/messages/client) start fresh since a live socket can't survive a process restart.
+for (const row of listAllServerRows()) {
+  servers.set(row.id, {
+    id: row.id,
+    host: row.host,
+    port: row.port,
+    version: row.version,
+    status: "idle",
+    phase: "idle",
+    statusHistory: [],
+    connected: false,
+    messages: [],
+  });
+}
+
 type Listener = (serverId: string, payload: unknown) => void;
 const listeners = new Set<Listener>();
 
@@ -66,10 +83,12 @@ function setStatus(server: ServerConfig, status: string) {
   });
 }
 
-/** Adds a server to the saved list. Does not connect — call connectServer() for that. */
-export function addServer(host: string, port: number, version: string): ServerConfig {
+/** Adds a server to the saved list, owned by `userId`. Does not connect — call connectServer() for that. */
+export function addServer(host: string, port: number, version: string, userId: string): ServerConfig {
   resolveProtocolVersion(version); // validate early so a bad version fails at add-time, not connect-time
   const id = randomUUID();
+  insertServerRow(id, host, port, version);
+  linkUserServer(userId, id);
   const server: ServerConfig = {
     id,
     host,
@@ -85,11 +104,15 @@ export function addServer(host: string, port: number, version: string): ServerCo
   return server;
 }
 
-export function listServers(): ServerConfig[] {
-  return Array.from(servers.values());
+/** Only the servers `userId` has added — the DB's user_servers mapping is the source of truth for ownership. */
+export function listServers(userId: string): ServerConfig[] {
+  return listServerRowsForUser(userId)
+    .map((row) => servers.get(row.id))
+    .filter((s): s is ServerConfig => !!s);
 }
 
-export function getServer(id: string): ServerConfig | undefined {
+export function getServer(id: string, userId: string): ServerConfig | undefined {
+  if (!isServerOwnedByUser(id, userId)) return undefined;
   return servers.get(id);
 }
 

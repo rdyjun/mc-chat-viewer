@@ -8,3 +8,4 @@ services:
       - "${WEB_PORT:-3000}:${WEB_PORT:-3000}"
     volumes:
       - ./nmp-cache:/app/nmp-cache
+      - ./data:/app/data

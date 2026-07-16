@@ -4,4 +4,6 @@ dist/
 .omc/
 # mineflayer/prismarine-auth caches the Microsoft device-code session tokens here after login
 nmp-cache/
+# sqlite database (users/servers/user_servers) — persisted via docker-compose volume on deploy
+data/
 *.log
