@@ -41,6 +41,9 @@
   .top-servers .rank-meta { font-size: 0.88rem; }
   .top-servers .rank-count { margin-left: auto; font-size: 0.78rem; color: #9ad; white-space: nowrap; }
   .top-servers .empty { color: #888; font-size: 0.85rem; }
+  .ping-badge { font-size: 0.78rem; color: #888; white-space: nowrap; }
+  .ping-badge.online { color: #4ade80; }
+  .ping-badge.offline { color: #f87171; }
   .recommend-grid { display: flex; flex-direction: column; gap: 0.6rem; }
   .recommend-card { background: #333; border-radius: 6px; padding: 0.6rem 0.8rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
   .recommend-card .info { font-size: 0.85rem; }
@@ -243,6 +246,33 @@
       showTab("servers");
     });
 
+    function pingBadgeHtml(host, port) {
+      return '<span class="ping-badge" data-host="' + escapeHtml(host) + '" data-port="' + port + '">확인 중...</span>';
+    }
+
+    // Server List Ping (loginless status query) — fetched per-badge so a slow/unreachable
+    // server can't hold up rendering the rest of the list.
+    function refreshPingBadges(root) {
+      (root || document).querySelectorAll(".ping-badge").forEach(async (badge) => {
+        const host = badge.dataset.host;
+        const port = badge.dataset.port;
+        try {
+          const res = await fetch("/api/ping?host=" + encodeURIComponent(host) + "&port=" + encodeURIComponent(port));
+          const data = await res.json();
+          if (data.online) {
+            badge.textContent = "🟢 " + (data.playersOnline ?? "?") + "/" + (data.playersMax ?? "?") + "명";
+            badge.classList.add("online");
+          } else {
+            badge.textContent = "🔴 오프라인";
+            badge.classList.add("offline");
+          }
+        } catch {
+          badge.textContent = "🔴 오프라인";
+          badge.classList.add("offline");
+        }
+      });
+    }
+
     function renderServerGridView() {
       serverGridView.innerHTML = servers.length
         ? servers.map((s) => {
@@ -251,6 +281,7 @@
             return '<div class="server-card" data-id="' + s.id + '">' +
               '<div class="name">' + escapeHtml(s.host) + ':' + s.port + '</div>' +
               '<div class="status">' + escapeHtml(s.status) + '</div>' +
+              pingBadgeHtml(s.host, s.port) +
               '<button type="button" ' + (canConnect ? "" : "disabled") + '>' + label + '</button>' +
               '</div>';
           }).join("")
@@ -258,6 +289,7 @@
       serverGridView.querySelectorAll(".server-card").forEach((card) => {
         card.querySelector("button").onclick = () => connectServer(card.dataset.id);
       });
+      refreshPingBadges(serverGridView);
     }
 
     function renderRecommended() {
@@ -267,11 +299,12 @@
         card.className = "recommend-card";
         card.innerHTML =
           '<div class="info"><div class="name">' + escapeHtml(r.name) + '</div>' +
-          '<div class="meta">' + escapeHtml(r.host) + ':' + r.port + ' · ' + escapeHtml(r.version) + '</div></div>' +
+          '<div class="meta">' + escapeHtml(r.host) + ':' + r.port + ' · ' + escapeHtml(r.version) + ' · ' + pingBadgeHtml(r.host, r.port) + '</div></div>' +
           '<button type="button">내 목록에 추가</button>';
         card.querySelector("button").onclick = () => addRecommended(r);
         recommendGrid.appendChild(card);
       });
+      refreshPingBadges(recommendGrid);
     }
 
     async function addRecommended(r) {
@@ -297,10 +330,12 @@
             '<div class="rank-row">' +
             '<span class="rank-num">' + (i + 1) + '</span>' +
             '<span class="rank-meta">' + escapeHtml(s.host) + ':' + s.port + '</span>' +
+            pingBadgeHtml(s.host, s.port) +
             '<span class="rank-count">' + s.count + '회 접속</span>' +
             '</div>'
           ).join("")
         : '<div class="empty">아직 접속 기록이 없습니다.</div>';
+      refreshPingBadges(topServersEl);
     }
 
     loadTopServers();

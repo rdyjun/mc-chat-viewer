@@ -3,6 +3,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import { WebSocketServer, WebSocket } from "ws";
 import { createServer, IncomingMessage } from "http";
+import net from "net";
 import path from "path";
 import {
   getAccountState,
@@ -14,6 +15,7 @@ import {
   completeMicrosoftLogin,
 } from "./account";
 import { upsertUser, isServerOwnedByUser, topServers } from "./db";
+import { pingServer } from "./protocol/serverPing";
 import {
   addServer,
   connectServer,
@@ -128,6 +130,42 @@ app.post("/api/servers", (req, res) => {
 // aggregate across everyone's connect history. Must stay above "/api/servers/:id".
 app.get("/api/servers/top", (_req, res) => {
   res.json(topServers(3));
+});
+
+// True for hostnames/IPs that only make sense on our own private network — blocking these
+// keeps this public, unauthenticated endpoint from being used as an SSRF probe against
+// internal infrastructure (it can still reach arbitrary *public* Minecraft servers, which is
+// the point of the feature).
+function isPrivateHost(host: string): boolean {
+  const h = host.toLowerCase();
+  if (h === "localhost" || h.endsWith(".local")) return true;
+  const ip = net.isIP(h) ? h : null;
+  if (!ip) return false;
+  return (
+    /^127\./.test(ip) ||
+    /^10\./.test(ip) ||
+    /^192\.168\./.test(ip) ||
+    /^169\.254\./.test(ip) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(ip) ||
+    ip === "::1"
+  );
+}
+
+// Public: Server List Ping (no login required — this is the same loginless status query real
+// launchers use to show player count/MOTD before joining), used by Home's recommended/top
+// server cards and the 서버 목록 tab.
+app.get("/api/ping", async (req, res) => {
+  const host = String(req.query.host ?? "");
+  const port = Number(req.query.port);
+  if (!host || !Number.isInteger(port) || port < 1 || port > 65535) {
+    res.status(400).json({ error: "host and a valid port are required" });
+    return;
+  }
+  if (isPrivateHost(host)) {
+    res.status(400).json({ error: "cannot ping private/internal hosts" });
+    return;
+  }
+  res.json(await pingServer(host, port));
 });
 
 app.get("/api/servers/:id", (req, res) => {
