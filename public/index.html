@@ -59,7 +59,10 @@
   input { padding: 0.4rem; border-radius: 4px; border: 1px solid #444; background: #333; color: #eee; width: 100%; box-sizing: border-box; }
   button { padding: 0.45rem 0.7rem; border-radius: 4px; border: none; background: var(--accent); color: var(--accent-text); font-weight: bold; cursor: pointer; }
   button:disabled { background: #555; color: #999; cursor: not-allowed; }
-  #addServerForm, #addServerForm2 { display: flex; flex-direction: column; gap: 0.5rem; }
+  #addServerForm { display: flex; flex-direction: column; gap: 0.5rem; }
+  .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+  .panel-header h2 { margin: 0; }
+  .add-server-btn { padding: 0.3rem 0.6rem; font-size: 0.78rem; }
   #serverList { list-style: none; padding: 0; margin: 0.5rem 0 0; display: flex; flex-direction: column; gap: 0.4rem; }
   #serverList li { padding: 0.5rem; border-radius: 6px; background: #333; font-size: 0.85rem; }
   #serverList li.selected { outline: 2px solid var(--accent); }
@@ -120,6 +123,19 @@
     </div>
   </div>
 
+  <div class="modal-backdrop" id="addServerModalBackdrop">
+    <div class="modal">
+      <button type="button" class="modal-close" id="addServerModalClose">✕</button>
+      <h2>서버 추가</h2>
+      <form id="addServerForm">
+        <input name="host" placeholder="서버 주소" required />
+        <input name="port" placeholder="포트 (기본 25565)" />
+        <input name="version" placeholder="버전 (예: 26.1.2 또는 775)" required />
+        <button type="submit">추가</button>
+      </form>
+    </div>
+  </div>
+
   <div class="view" id="homeView">
     <div class="panel" id="recentServersPanel" style="display:none">
       <h2>최근 접속 서버</h2>
@@ -131,27 +147,20 @@
     <div class="layout">
       <div class="sidebar">
         <div class="panel">
-          <h2>서버 추가</h2>
-          <form id="addServerForm">
-            <input name="host" placeholder="서버 주소" required />
-            <input name="port" placeholder="포트 (기본 25565)" />
-            <input name="version" placeholder="버전 (예: 26.1.2 또는 775)" required />
-            <button type="submit">추가</button>
-          </form>
-        </div>
-
-        <div class="panel">
-          <h2>서버 목록</h2>
-          <ul id="serverList"></ul>
-        </div>
-
-        <div class="panel">
           <h2>서버 탐색</h2>
           <div class="explore-links">
             <a class="button-link" href="https://www.minelist.kr" target="_blank" rel="noopener noreferrer">마인리스트 (minelist.kr)</a>
             <a class="button-link" href="https://minesquare.kr" target="_blank" rel="noopener noreferrer">마인스퀘어 (minesquare.kr)</a>
             <a class="button-link" href="https://mine.page" target="_blank" rel="noopener noreferrer">마인페이지 (mine.page)</a>
           </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h2>서버 목록</h2>
+            <button type="button" class="add-server-btn" id="addServerBtn">+ 서버 추가</button>
+          </div>
+          <ul id="serverList"></ul>
         </div>
       </div>
 
@@ -168,17 +177,10 @@
 
   <div class="view" id="serversView">
     <div class="panel">
-      <h2>서버 추가</h2>
-      <form id="addServerForm2">
-        <input name="host" placeholder="서버 주소" required />
-        <input name="port" placeholder="포트 (기본 25565)" />
-        <input name="version" placeholder="버전 (예: 26.1.2 또는 775)" required />
-        <button type="submit">추가</button>
-      </form>
-    </div>
-
-    <div class="panel" style="margin-top:1rem">
-      <h2>서버 목록</h2>
+      <div class="panel-header">
+        <h2>서버 목록</h2>
+        <button type="button" class="add-server-btn" id="addServerBtn2">+ 서버 추가</button>
+      </div>
       <div class="server-grid-view" id="serverGridView"></div>
     </div>
   </div>
@@ -197,12 +199,30 @@
     const listView = document.getElementById("listView");
     const serversView = document.getElementById("serversView");
     const serverGridView = document.getElementById("serverGridView");
-    const addServerForm2 = document.getElementById("addServerForm2");
+    const addServerBtn = document.getElementById("addServerBtn");
+    const addServerBtn2 = document.getElementById("addServerBtn2");
     const recentServersPanel = document.getElementById("recentServersPanel");
     const recentServersEl = document.getElementById("recentServers");
     const loginTriggerBtn = document.getElementById("loginTriggerBtn");
     const loginModalBackdrop = document.getElementById("loginModalBackdrop");
     const loginModalClose = document.getElementById("loginModalClose");
+    const addServerModalBackdrop = document.getElementById("addServerModalBackdrop");
+    const addServerModalClose = document.getElementById("addServerModalClose");
+
+    function openAddServerModal() {
+      addServerModalBackdrop.classList.add("open");
+    }
+
+    function closeAddServerModal() {
+      addServerModalBackdrop.classList.remove("open");
+    }
+
+    addServerBtn.addEventListener("click", openAddServerModal);
+    addServerBtn2.addEventListener("click", openAddServerModal);
+    addServerModalClose.addEventListener("click", closeAddServerModal);
+    addServerModalBackdrop.addEventListener("click", (e) => {
+      if (e.target === addServerModalBackdrop) closeAddServerModal();
+    });
 
     function openLoginModal() {
       loginModalBackdrop.classList.add("open");
@@ -516,9 +536,9 @@
 
     setLayout(1);
 
-    async function submitAddServer(e, form) {
+    addServerForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const data = Object.fromEntries(new FormData(form).entries());
+      const data = Object.fromEntries(new FormData(addServerForm).entries());
       const res = await fetch("/api/servers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -529,11 +549,9 @@
         alert("서버 추가 실패: " + body.error);
         return;
       }
-      form.reset();
-    }
-
-    addServerForm.addEventListener("submit", (e) => submitAddServer(e, addServerForm));
-    addServerForm2.addEventListener("submit", (e) => submitAddServer(e, addServerForm2));
+      addServerForm.reset();
+      closeAddServerModal();
+    });
 
     const ws = new WebSocket(`ws://${location.host}`);
     ws.onmessage = (evt) => {
