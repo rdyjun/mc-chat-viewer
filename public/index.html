@@ -9,9 +9,13 @@
   h2 { font-size: 0.95rem; color: #ccc; margin: 0 0 0.5rem; }
   header.appHeader { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 1.25rem; }
   header.appHeader h1 { margin: 0; }
-  .tabNav { display: flex; gap: 0.4rem; }
-  .tabNav button { background: #333; color: #ccc; font-weight: normal; }
-  .tabNav button.active { background: #4a7; color: #111; font-weight: bold; }
+  .tabNav { display: flex; gap: 0.2rem; background: #262626; border-radius: 999px; padding: 0.25rem; }
+  .tabNav button {
+    background: transparent; color: #999; font-weight: 600; font-size: 0.85rem;
+    padding: 0.4rem 1.1rem; border-radius: 999px; transition: background 0.15s, color 0.15s;
+  }
+  .tabNav button:hover { color: #ddd; }
+  .tabNav button.active { background: #4a7; color: #111; }
   .view { display: none; }
   .view.active { display: block; }
   .recommend-grid { display: flex; flex-direction: column; gap: 0.6rem; }
