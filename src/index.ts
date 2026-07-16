@@ -4,7 +4,15 @@ import cookieParser from "cookie-parser";
 import { WebSocketServer, WebSocket } from "ws";
 import { createServer, IncomingMessage } from "http";
 import path from "path";
-import { getAccountState, onAccountEvent, startLogin, tryResumeSession } from "./account";
+import {
+  getAccountState,
+  onAccountEvent,
+  tryResumeSession,
+  createLoginState,
+  consumeLoginState,
+  getMicrosoftLoginUrl,
+  completeMicrosoftLogin,
+} from "./account";
 import { upsertUser, isServerOwnedByUser } from "./db";
 import {
   addServer,
@@ -53,14 +61,30 @@ app.get("/api/account", (_req, res) => {
   res.json(getAccountState());
 });
 
-app.post("/api/account/login", (req, res) => {
-  const { email } = req.body ?? {};
-  if (!email) {
-    res.status(400).json({ error: "email is required" });
+app.get("/api/account/login/microsoft", async (_req, res) => {
+  try {
+    const state = createLoginState();
+    const url = await getMicrosoftLoginUrl(state);
+    res.redirect(url);
+  } catch (err: any) {
+    res.status(500).send(`Microsoft login isn't configured: ${err.message}`);
+  }
+});
+
+app.get("/api/account/callback", async (req, res) => {
+  const { code, state, error, error_description: errorDescription } = req.query;
+  if (error) {
+    res.redirect("/?loginError=" + encodeURIComponent(String(errorDescription ?? error)));
     return;
   }
-  startLogin(String(email));
-  res.status(202).json({ ok: true });
+  if (!consumeLoginState(typeof state === "string" ? state : undefined) || typeof code !== "string") {
+    res.status(400).send("Invalid or expired login attempt. Please try signing in again.");
+    return;
+  }
+  // Don't await: the actual token/Xbox Live/Minecraft exchange happens in the background and
+  // the frontend picks up progress via the "account" websocket event, same as before.
+  completeMicrosoftLogin(code);
+  res.redirect("/");
 });
 
 function summarizeServer(s: ReturnType<typeof getServer>) {

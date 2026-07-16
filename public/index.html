@@ -27,8 +27,11 @@
   .modal h2 { margin-bottom: 0.75rem; }
   .modal-close { position: absolute; top: 0.6rem; right: 0.6rem; background: none; padding: 0.1rem 0.4rem; font-weight: normal; color: #999; }
   .modal-close:hover { color: #eee; }
-  #accountForm { display: flex; gap: 0.4rem; }
-  #msaCode { margin-top: 0.75rem; }
+  .ms-login-btn {
+    display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+    padding: 0.6rem 0.9rem; border-radius: 4px; background: var(--accent); color: var(--accent-text);
+    font-weight: bold; text-decoration: none;
+  }
   .view { display: none; }
   .view.active { display: block; }
   .recommend-grid { display: flex; flex-direction: column; gap: 0.6rem; }
@@ -50,8 +53,6 @@
   input { padding: 0.4rem; border-radius: 4px; border: 1px solid #444; background: #333; color: #eee; width: 100%; box-sizing: border-box; }
   button { padding: 0.45rem 0.7rem; border-radius: 4px; border: none; background: var(--accent); color: var(--accent-text); font-weight: bold; cursor: pointer; }
   button:disabled { background: #555; color: #999; cursor: not-allowed; }
-  #msaCode { background: #443; border: 1px solid #a90; padding: 0.6rem; border-radius: 6px; font-size: 0.85rem; }
-  #msaCode a { color: #fd6; }
   #addServerForm { display: flex; flex-direction: column; gap: 0.5rem; }
   #serverList { list-style: none; padding: 0; margin: 0.5rem 0 0; display: flex; flex-direction: column; gap: 0.4rem; }
   #serverList li { padding: 0.5rem; border-radius: 6px; background: #333; font-size: 0.85rem; }
@@ -109,11 +110,7 @@
     <div class="modal">
       <button type="button" class="modal-close" id="loginModalClose">✕</button>
       <h2>로그인</h2>
-      <form id="accountForm">
-        <input name="email" placeholder="Microsoft 계정 이메일" required />
-        <button type="submit">로그인</button>
-      </form>
-      <div id="msaCode" style="display:none"></div>
+      <a class="ms-login-btn" href="/api/account/login/microsoft">Microsoft로 로그인</a>
     </div>
   </div>
 
@@ -171,9 +168,7 @@
   </div>
 
   <script>
-    const accountForm = document.getElementById("accountForm");
     const accountStatusEl = document.getElementById("accountStatus");
-    const msaCodeEl = document.getElementById("msaCode");
     const addServerForm = document.getElementById("addServerForm");
     const serverListEl = document.getElementById("serverList");
     const layoutSwitcher = document.getElementById("layoutSwitcher");
@@ -204,7 +199,7 @@
       if (e.target === loginModalBackdrop) closeLoginModal();
     });
 
-    let account = { status: "logged-out", msaCode: null };
+    let account = { status: "logged-out" };
     let servers = [];
     let layout = 1;
     let slots = [{ serverId: null }]; // one entry per visible chat-grid slot
@@ -292,30 +287,17 @@
     function renderAccount() {
       if (account.status === "logged-in") {
         accountStatusEl.textContent = "✅ " + account.profile.name + " 로그인됨";
-        accountForm.style.display = "none";
         loginTriggerBtn.style.display = "none";
         closeLoginModal();
       } else if (account.status === "logging-in") {
-        accountStatusEl.textContent = "로그인 진행 중 (" + account.email + ")";
-        accountForm.style.display = "none";
+        accountStatusEl.textContent = "로그인 진행 중...";
         loginTriggerBtn.style.display = "none";
       } else if (account.status === "error") {
         accountStatusEl.textContent = "로그인 실패: " + account.error;
-        accountForm.style.display = "";
         loginTriggerBtn.style.display = "";
       } else {
         accountStatusEl.textContent = "서버 접속 전, 로그인이 필요합니다.";
-        accountForm.style.display = "";
         loginTriggerBtn.style.display = "";
-      }
-
-      if (account.msaCode) {
-        msaCodeEl.style.display = "block";
-        msaCodeEl.innerHTML =
-          "<a href='" + account.msaCode.verification_uri + "' target='_blank'>" +
-          account.msaCode.verification_uri + "</a> 에서 코드 <b>" + account.msaCode.user_code + "</b> 입력";
-      } else {
-        msaCodeEl.style.display = "none";
       }
     }
 
@@ -472,7 +454,6 @@
         if (body.code === "not-logged-in") {
           alert("먼저 로그인 해주세요.");
           openLoginModal();
-          accountForm.querySelector("input[name=email]").focus();
         } else {
           alert("연결 실패: " + body.error);
         }
@@ -491,16 +472,6 @@
     }
 
     setLayout(1);
-
-    accountForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const data = Object.fromEntries(new FormData(accountForm).entries());
-      await fetch("/api/account/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-    });
 
     addServerForm.addEventListener("submit", async (e) => {
       e.preventDefault();

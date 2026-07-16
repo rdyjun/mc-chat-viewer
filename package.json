@@ -11,6 +11,7 @@
     "test": "tsx src/protocol/smoke-test.ts"
   },
   "dependencies": {
+    "@azure/msal-node": "^2.16.3",
     "better-sqlite3": "^12.11.1",
     "cookie-parser": "^1.4.7",
     "dotenv": "^16.4.5",
