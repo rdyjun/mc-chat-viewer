@@ -41,7 +41,7 @@
   .top-servers .rank-meta { font-size: 0.88rem; }
   .top-servers .rank-count { margin-left: auto; font-size: 0.78rem; color: #9ad; white-space: nowrap; }
   .top-servers .rank-goto { margin-left: auto; padding: 0.3rem 0.6rem; font-size: 0.78rem; }
-  .top-servers .empty { color: #888; font-size: 0.85rem; }
+  .top-servers .empty, .recommend-grid .empty { color: #888; font-size: 0.85rem; }
   .ping-badge { font-size: 0.78rem; color: #888; white-space: nowrap; }
   .ping-badge.online { color: #4ade80; }
   .ping-badge.offline { color: #f87171; }
@@ -229,10 +229,8 @@
     let slots = [{ serverId: null }]; // one entry per visible chat-grid slot
     let slotRefs = []; // DOM refs parallel to `slots`, rebuilt whenever the layout changes
 
-    // Placeholder curated list — replace with whatever servers you actually want to recommend.
-    const recommendedServers = [
-      { name: "Hypixel", host: "mc.hypixel.net", port: 25565, version: "775" },
-    ];
+    // Curated list — add whatever servers you actually want to recommend here.
+    const recommendedServers = [];
 
     function showTab(tab) {
       homeView.classList.toggle("active", tab === "home");
@@ -302,6 +300,10 @@
 
     function renderRecommended() {
       recommendGrid.innerHTML = "";
+      if (!recommendedServers.length) {
+        recommendGrid.innerHTML = '<div class="empty">아직 추천 서버가 없습니다.</div>';
+        return;
+      }
       recommendedServers.forEach((r) => {
         const card = document.createElement("div");
         card.className = "recommend-card";
