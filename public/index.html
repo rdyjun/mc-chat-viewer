@@ -17,11 +17,16 @@
   }
   .tabNav button:hover { color: #ddd; }
   .tabNav button.active { color: #fff; border-bottom-color: #4a7; }
-  .accountArea { margin-left: auto; display: flex; align-items: center; gap: 0.6rem; position: relative; }
+  .accountArea { margin-left: auto; display: flex; align-items: center; gap: 0.6rem; }
   #accountStatus { font-size: 0.82rem; color: #ccc; white-space: nowrap; }
+  .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); align-items: center; justify-content: center; z-index: 100; }
+  .modal-backdrop.open { display: flex; }
+  .modal { background: #262626; border-radius: 10px; padding: 1.25rem; width: 20rem; max-width: 90vw; position: relative; }
+  .modal h2 { margin-bottom: 0.75rem; }
+  .modal-close { position: absolute; top: 0.6rem; right: 0.6rem; background: none; padding: 0.1rem 0.4rem; font-weight: normal; color: #999; }
+  .modal-close:hover { color: #eee; }
   #accountForm { display: flex; gap: 0.4rem; }
-  #accountForm input { width: 190px; }
-  #msaCode { position: absolute; top: 100%; right: 0; margin-top: 0.5rem; z-index: 10; width: max-content; max-width: 20rem; }
+  #msaCode { margin-top: 0.75rem; }
   .view { display: none; }
   .view.active { display: block; }
   .recommend-grid { display: flex; flex-direction: column; gap: 0.6rem; }
@@ -61,17 +66,25 @@
     <h1>Minecraft Chat Viewer</h1>
     <nav class="tabNav">
       <button type="button" id="tabHomeBtn" class="active">홈</button>
-      <button type="button" id="tabListBtn">목록</button>
+      <button type="button" id="tabListBtn">Play</button>
     </nav>
     <div class="accountArea">
       <span id="accountStatus">확인 중...</span>
+      <button type="button" id="loginTriggerBtn" style="display:none">로그인</button>
+    </div>
+  </header>
+
+  <div class="modal-backdrop" id="loginModalBackdrop">
+    <div class="modal">
+      <button type="button" class="modal-close" id="loginModalClose">✕</button>
+      <h2>로그인</h2>
       <form id="accountForm">
         <input name="email" placeholder="Microsoft 계정 이메일" required />
         <button type="submit">로그인</button>
       </form>
       <div id="msaCode" style="display:none"></div>
     </div>
-  </header>
+  </div>
 
   <div class="view active" id="homeView">
     <div class="panel">
@@ -132,6 +145,23 @@
     const homeView = document.getElementById("homeView");
     const listView = document.getElementById("listView");
     const recommendGrid = document.getElementById("recommendGrid");
+    const loginTriggerBtn = document.getElementById("loginTriggerBtn");
+    const loginModalBackdrop = document.getElementById("loginModalBackdrop");
+    const loginModalClose = document.getElementById("loginModalClose");
+
+    function openLoginModal() {
+      loginModalBackdrop.classList.add("open");
+    }
+
+    function closeLoginModal() {
+      loginModalBackdrop.classList.remove("open");
+    }
+
+    loginTriggerBtn.addEventListener("click", openLoginModal);
+    loginModalClose.addEventListener("click", closeLoginModal);
+    loginModalBackdrop.addEventListener("click", (e) => {
+      if (e.target === loginModalBackdrop) closeLoginModal();
+    });
 
     let account = { status: "logged-out", msaCode: null };
     let servers = [];
@@ -193,15 +223,20 @@
       if (account.status === "logged-in") {
         accountStatusEl.textContent = "✅ " + account.profile.name + " 로그인됨";
         accountForm.style.display = "none";
+        loginTriggerBtn.style.display = "none";
+        closeLoginModal();
       } else if (account.status === "logging-in") {
         accountStatusEl.textContent = "로그인 진행 중 (" + account.email + ")";
         accountForm.style.display = "none";
+        loginTriggerBtn.style.display = "none";
       } else if (account.status === "error") {
         accountStatusEl.textContent = "로그인 실패: " + account.error;
         accountForm.style.display = "";
+        loginTriggerBtn.style.display = "";
       } else {
         accountStatusEl.textContent = "로그인이 필요합니다.";
         accountForm.style.display = "";
+        loginTriggerBtn.style.display = "";
       }
 
       if (account.msaCode) {
@@ -258,7 +293,7 @@
         const body = await res.json().catch(() => ({ error: res.statusText }));
         if (body.code === "not-logged-in") {
           alert("먼저 로그인 해주세요.");
-          accountForm.style.display = "";
+          openLoginModal();
           accountForm.querySelector("input[name=email]").focus();
         } else {
           alert("연결 실패: " + body.error);
