@@ -84,16 +84,26 @@
   .chat-grid[data-layout="4"] { grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; }
   .chat-slot { background: #1a1a1a; border-radius: 6px; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; }
   .slot-header { display: flex; gap: 0.5rem; align-items: center; }
-  .slot-header select {
-    flex: 1; appearance: none; -webkit-appearance: none;
-    background-color: #262626; color: #eee; border: 1px solid #444; border-radius: 6px;
+  .slot-server-picker { position: relative; flex: 1; min-width: 0; }
+  .slot-server-btn {
+    width: 100%; text-align: left; background-color: #262626; color: #eee; border: 1px solid #444; border-radius: 6px;
     padding: 0.4rem 1.8rem 0.4rem 0.7rem; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23999' d='M4 6l4 4 4-4z'/%3E%3C/svg%3E");
     background-repeat: no-repeat; background-position: right 0.6rem center; background-size: 0.7rem;
     transition: border-color 0.15s;
   }
-  .slot-header select:hover { border-color: #666; }
-  .slot-header select:focus { outline: none; border-color: var(--accent); }
+  .slot-server-btn:hover { border-color: #666; }
+  .slot-server-menu {
+    display: none; position: absolute; top: calc(100% + 0.3rem); left: 0; right: 0; z-index: 20;
+    background: #262626; border: 1px solid #444; border-radius: 6px; max-height: 14rem; overflow-y: auto;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+  }
+  .slot-server-menu.open { display: block; }
+  .slot-server-menu .item { padding: 0.55rem 0.7rem; font-size: 0.82rem; cursor: pointer; }
+  .slot-server-menu .item:hover { background: #333; }
+  .slot-server-menu .item.selected { background: #333; color: var(--accent); font-weight: bold; }
+  .slot-server-menu .empty { padding: 0.55rem 0.7rem; font-size: 0.8rem; color: #888; }
   .slot-status { font-size: 0.78rem; color: #9ad; white-space: nowrap; }
   .slot-log { flex: 1; overflow-y: auto; background: #222; border-radius: 6px; padding: 0.4rem 0.6rem; min-height: 10rem; max-height: 45vh; }
   .slot-chat-form { display: flex; gap: 0.5rem; }
@@ -383,7 +393,7 @@
         btn.onclick = () => connectServer(s.id);
         serverListEl.appendChild(li);
       });
-      refreshSlotSelects();
+      refreshSlotMenus();
       renderServerGridView();
     }
 
@@ -392,7 +402,6 @@
       let idx = slots.findIndex((slot) => !slot.serverId);
       if (idx === -1) idx = 0;
       slots[idx].serverId = id;
-      if (slotRefs[idx]) slotRefs[idx].selectEl.value = id;
       renderServers();
       loadSlotDetail(idx);
     }
@@ -413,21 +422,26 @@
         const div = document.createElement("div");
         div.className = "chat-slot";
         div.innerHTML =
-          '<div class="slot-header"><select></select><span class="slot-status"></span></div>' +
+          '<div class="slot-header">' +
+          '<div class="slot-server-picker"><button type="button" class="slot-server-btn">서버 선택</button><div class="slot-server-menu"></div></div>' +
+          '<span class="slot-status"></span>' +
+          '</div>' +
           '<div class="slot-log"></div>' +
           '<form class="slot-chat-form"><input placeholder="채팅 입력 (자동 서명됨)" style="flex:1" /><button type="submit">전송</button></form>';
         chatGrid.appendChild(div);
 
-        const selectEl = div.querySelector("select");
+        const btnEl = div.querySelector(".slot-server-btn");
+        const menuEl = div.querySelector(".slot-server-menu");
         const statusEl = div.querySelector(".slot-status");
         const logEl = div.querySelector(".slot-log");
         const formEl = div.querySelector("form");
         const inputEl = div.querySelector("input");
 
-        selectEl.addEventListener("change", () => {
-          slots[i].serverId = selectEl.value || null;
-          renderServers();
-          loadSlotDetail(i);
+        btnEl.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const isOpen = menuEl.classList.contains("open");
+          closeAllSlotMenus();
+          if (!isOpen) menuEl.classList.add("open");
         });
 
         formEl.addEventListener("submit", async (e) => {
@@ -452,24 +466,42 @@
           inputEl.value = "";
         });
 
-        return { selectEl, statusEl, logEl, formEl, inputEl };
+        return { btnEl, menuEl, statusEl, logEl, formEl, inputEl };
       });
-      refreshSlotSelects();
+      refreshSlotMenus();
       slots.forEach((_, i) => loadSlotDetail(i));
     }
 
-    function refreshSlotSelects() {
+    function closeAllSlotMenus() {
+      slotRefs.forEach((ref) => ref.menuEl.classList.remove("open"));
+    }
+
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".slot-server-picker")) closeAllSlotMenus();
+    });
+
+    function refreshSlotMenus() {
       slotRefs.forEach((ref, i) => {
-        const current = slots[i].serverId;
-        ref.selectEl.innerHTML = '<option value="">서버 선택...</option>' +
-          servers.map((s) =>
-            '<option value="' + s.id + '"' + (s.id === current ? " selected" : "") + '>' +
-            escapeHtml(s.host) + ':' + s.port + '</option>'
-          ).join("");
-        if (current && !servers.some((s) => s.id === current)) {
+        if (slots[i].serverId && !servers.some((s) => s.id === slots[i].serverId)) {
           slots[i].serverId = null;
-          ref.selectEl.value = "";
         }
+        const current = slots[i].serverId;
+        const currentServer = servers.find((s) => s.id === current);
+        ref.btnEl.textContent = currentServer ? currentServer.host + ':' + currentServer.port : "서버 선택";
+        ref.menuEl.innerHTML = servers.length
+          ? servers.map((s) =>
+              '<div class="item' + (s.id === current ? ' selected' : '') + '" data-id="' + s.id + '">' +
+              escapeHtml(s.host) + ':' + s.port + '</div>'
+            ).join("")
+          : '<div class="empty">등록된 서버가 없습니다.</div>';
+        ref.menuEl.querySelectorAll(".item").forEach((item) => {
+          item.addEventListener("click", () => {
+            slots[i].serverId = item.dataset.id;
+            closeAllSlotMenus();
+            renderServers();
+            loadSlotDetail(i);
+          });
+        });
       });
     }
 
