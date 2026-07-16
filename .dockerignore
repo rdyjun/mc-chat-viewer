@@ -1,0 +1,8 @@
+node_modules
+dist
+nmp-cache
+.env
+.git
+.omc
+.claude
+*.log
