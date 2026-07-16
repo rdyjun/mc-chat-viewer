@@ -9,13 +9,19 @@
   h2 { font-size: 0.95rem; color: #ccc; margin: 0 0 0.5rem; }
   header.appHeader { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 1.25rem; }
   header.appHeader h1 { margin: 0; }
-  .tabNav { display: flex; gap: 0.2rem; background: #262626; border-radius: 999px; padding: 0.25rem; }
+  .tabNav { display: flex; gap: 1.4rem; }
   .tabNav button {
-    background: transparent; color: #999; font-weight: 600; font-size: 0.85rem;
-    padding: 0.4rem 1.1rem; border-radius: 999px; transition: background 0.15s, color 0.15s;
+    background: none; color: #999; font-weight: 600; font-size: 0.95rem;
+    padding: 0.2rem 0; border-radius: 0; border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
   }
   .tabNav button:hover { color: #ddd; }
-  .tabNav button.active { background: #4a7; color: #111; }
+  .tabNav button.active { color: #fff; border-bottom-color: #4a7; }
+  .accountArea { margin-left: auto; display: flex; align-items: center; gap: 0.6rem; position: relative; }
+  #accountStatus { font-size: 0.82rem; color: #ccc; white-space: nowrap; }
+  #accountForm { display: flex; gap: 0.4rem; }
+  #accountForm input { width: 190px; }
+  #msaCode { position: absolute; top: 100%; right: 0; margin-top: 0.5rem; z-index: 10; width: max-content; max-width: 20rem; }
   .view { display: none; }
   .view.active { display: block; }
   .recommend-grid { display: flex; flex-direction: column; gap: 0.6rem; }
@@ -32,9 +38,7 @@
   input { padding: 0.4rem; border-radius: 4px; border: 1px solid #444; background: #333; color: #eee; width: 100%; box-sizing: border-box; }
   button { padding: 0.45rem 0.7rem; border-radius: 4px; border: none; background: #4a7; color: #111; font-weight: bold; cursor: pointer; }
   button:disabled { background: #555; color: #999; cursor: not-allowed; }
-  #accountForm { display: flex; flex-direction: column; gap: 0.5rem; }
-  #accountStatus { font-size: 0.85rem; margin-bottom: 0.4rem; }
-  #msaCode { background: #443; border: 1px solid #a90; padding: 0.6rem; border-radius: 6px; margin-top: 0.5rem; font-size: 0.85rem; }
+  #msaCode { background: #443; border: 1px solid #a90; padding: 0.6rem; border-radius: 6px; font-size: 0.85rem; }
   #msaCode a { color: #fd6; }
   #addServerForm { display: flex; flex-direction: column; gap: 0.5rem; }
   #serverList { list-style: none; padding: 0; margin: 0.5rem 0 0; display: flex; flex-direction: column; gap: 0.4rem; }
@@ -59,6 +63,14 @@
       <button type="button" id="tabHomeBtn" class="active">홈</button>
       <button type="button" id="tabListBtn">목록</button>
     </nav>
+    <div class="accountArea">
+      <span id="accountStatus">확인 중...</span>
+      <form id="accountForm">
+        <input name="email" placeholder="Microsoft 계정 이메일" required />
+        <button type="submit">로그인</button>
+      </form>
+      <div id="msaCode" style="display:none"></div>
+    </div>
   </header>
 
   <div class="view active" id="homeView">
@@ -71,16 +83,6 @@
   <div class="view" id="listView">
     <div class="layout">
       <div class="sidebar">
-        <div class="panel">
-          <h2>계정</h2>
-          <div id="accountStatus">확인 중...</div>
-          <form id="accountForm">
-            <input name="email" placeholder="Microsoft 계정 이메일" required />
-            <button type="submit">로그인</button>
-          </form>
-          <div id="msaCode" style="display:none"></div>
-        </div>
-
         <div class="panel">
           <h2>서버 추가</h2>
           <form id="addServerForm">
