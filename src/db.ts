@@ -23,6 +23,14 @@ db.exec(`
     server_id TEXT NOT NULL REFERENCES servers(id),
     PRIMARY KEY (user_id, server_id)
   );
+  CREATE TABLE IF NOT EXISTS connection_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    server_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    host TEXT NOT NULL,
+    port INTEGER NOT NULL,
+    created_at INTEGER NOT NULL
+  );
 `);
 
 export interface ServerRow {
@@ -64,4 +72,39 @@ export function isServerOwnedByUser(serverId: string, userId: string): boolean {
     .prepare("SELECT 1 FROM user_servers WHERE server_id = ? AND user_id = ?")
     .get(serverId, userId);
   return !!row;
+}
+
+/**
+ * Fire-and-forget: records a connect attempt for the "인기 서버" ranking. Never throws — a
+ * logging hiccup should never be able to break someone's actual connect flow.
+ */
+export function logConnection(serverId: string, userId: string, host: string, port: number): void {
+  setImmediate(() => {
+    try {
+      db.prepare(
+        "INSERT INTO connection_logs (server_id, user_id, host, port, created_at) VALUES (?, ?, ?, ?, ?)"
+      ).run(serverId, userId, host, port, Date.now());
+    } catch (err) {
+      console.warn("Failed to record connection log:", (err as Error).message);
+    }
+  });
+}
+
+export interface TopServerEntry {
+  host: string;
+  port: number;
+  count: number;
+}
+
+/** Ranks servers by total connect attempts across all users, grouped by host:port. */
+export function topServers(limit: number): TopServerEntry[] {
+  return db
+    .prepare(
+      `SELECT host, port, COUNT(*) as count
+       FROM connection_logs
+       GROUP BY host, port
+       ORDER BY count DESC
+       LIMIT ?`
+    )
+    .all(limit) as TopServerEntry[];
 }

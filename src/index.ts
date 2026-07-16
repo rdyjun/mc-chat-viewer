@@ -13,7 +13,7 @@ import {
   getMicrosoftLoginUrl,
   completeMicrosoftLogin,
 } from "./account";
-import { upsertUser, isServerOwnedByUser } from "./db";
+import { upsertUser, isServerOwnedByUser, topServers } from "./db";
 import {
   addServer,
   connectServer,
@@ -124,6 +124,12 @@ app.post("/api/servers", (req, res) => {
   }
 });
 
+// Public: powers the Home tab's "인기 서버" ranking — not scoped per-user, since it's an
+// aggregate across everyone's connect history. Must stay above "/api/servers/:id".
+app.get("/api/servers/top", (_req, res) => {
+  res.json(topServers(3));
+});
+
 app.get("/api/servers/:id", (req, res) => {
   const uid = (req as any).uid as string | undefined;
   const server = uid ? getServer(req.params.id, uid) : undefined;
@@ -141,7 +147,7 @@ app.post("/api/servers/:id/connect", async (req, res) => {
     return;
   }
   try {
-    await connectServer(req.params.id);
+    await connectServer(req.params.id, uid);
     res.json({ ok: true });
   } catch (err) {
     if (err instanceof NotLoggedInError) {

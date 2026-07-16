@@ -2,7 +2,14 @@ import { randomUUID } from "crypto";
 import { RawMcClient, ChatEvent } from "./protocol/rawClient";
 import { resolveProtocolVersion } from "./protocol/protocolVersions";
 import { getAccessToken, getSigningCertificate } from "./account";
-import { insertServerRow, linkUserServer, listAllServerRows, listServerRowsForUser, isServerOwnedByUser } from "./db";
+import {
+  insertServerRow,
+  linkUserServer,
+  listAllServerRows,
+  listServerRowsForUser,
+  isServerOwnedByUser,
+  logConnection,
+} from "./db";
 
 export interface ChatMessage {
   username: string;
@@ -136,7 +143,7 @@ export function sendChatToServer(id: string, message: string): void {
 }
 
 /** Connects a saved server using the currently logged-in account. Throws NotLoggedInError if none. */
-export async function connectServer(id: string): Promise<void> {
+export async function connectServer(id: string, userId: string): Promise<void> {
   const server = servers.get(id);
   if (!server) throw new Error("server not found");
   if (server.phase === "active") return; // already connecting/connected, nothing to do
@@ -144,6 +151,7 @@ export async function connectServer(id: string): Promise<void> {
   const account = getAccessToken();
   if (!account) throw new NotLoggedInError();
 
+  logConnection(id, userId, server.host, server.port); // fire-and-forget, feeds the "인기 서버" ranking
   server.phase = "active"; // set synchronously, before any await, so a second call can't race in
   setStatus(server, "connecting");
   const certificate = (await getSigningCertificate()) ?? undefined;
