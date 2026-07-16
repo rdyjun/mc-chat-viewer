@@ -18,7 +18,16 @@
   }
   .tabNav button:hover { color: #ddd; }
   .tabNav button.active { color: #fff; border-bottom-color: var(--accent); }
-  .accountArea { margin-left: auto; display: flex; align-items: center; gap: 0.6rem; }
+  .headerServers { margin-left: auto; display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0.6rem; border-radius: 6px; cursor: pointer; }
+  .headerServers:hover { background: #292929; }
+  .headerServers .hs-label { font-size: 0.8rem; color: #999; white-space: nowrap; }
+  .hs-list { display: flex; gap: 0.4rem; overflow: hidden; max-width: 22rem; }
+  .hs-pill { display: flex; align-items: center; gap: 0.35rem; background: #333; padding: 0.2rem 0.55rem; border-radius: 999px; font-size: 0.75rem; white-space: nowrap; }
+  .hs-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: #666; flex-shrink: 0; }
+  .hs-dot.connected { background: #4ade80; }
+  .hs-dot.connecting { background: #facc15; }
+  .hs-empty { font-size: 0.78rem; color: #666; }
+  .accountArea { display: flex; align-items: center; gap: 0.6rem; }
   #accountStatus { font-size: 0.82rem; color: #ccc; white-space: nowrap; }
   .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); align-items: center; justify-content: center; z-index: 100; }
   .modal-backdrop.open { display: flex; }
@@ -83,6 +92,10 @@
       <button type="button" id="tabHomeBtn" class="active">홈</button>
       <button type="button" id="tabListBtn">Play</button>
     </nav>
+    <div class="headerServers" id="headerServers" title="서버 목록 보기">
+      <span class="hs-label">서버</span>
+      <div class="hs-list" id="headerServerList"></div>
+    </div>
     <div class="accountArea">
       <span id="accountStatus">확인 중...</span>
       <button type="button" id="loginTriggerBtn" style="display:none">로그인</button>
@@ -119,7 +132,10 @@
             <input name="version" placeholder="버전 (예: 26.1.2 또는 775)" required />
             <button type="submit">추가</button>
           </form>
-          <h2 style="margin-top:1rem">서버 목록</h2>
+        </div>
+
+        <div class="panel">
+          <h2>서버 목록</h2>
           <ul id="serverList"></ul>
         </div>
 
@@ -157,6 +173,8 @@
     const homeView = document.getElementById("homeView");
     const listView = document.getElementById("listView");
     const recommendGrid = document.getElementById("recommendGrid");
+    const headerServers = document.getElementById("headerServers");
+    const headerServerList = document.getElementById("headerServerList");
     const loginTriggerBtn = document.getElementById("loginTriggerBtn");
     const loginModalBackdrop = document.getElementById("loginModalBackdrop");
     const loginModalClose = document.getElementById("loginModalClose");
@@ -196,6 +214,17 @@
 
     tabHomeBtn.addEventListener("click", () => showTab("home"));
     tabListBtn.addEventListener("click", () => showTab("list"));
+    headerServers.addEventListener("click", () => showTab("list"));
+
+    function renderHeaderServers() {
+      headerServerList.innerHTML = servers.length
+        ? servers.map((s) => {
+            const dotClass = s.connected ? "connected" : (s.phase === "active" ? "connecting" : "");
+            return '<span class="hs-pill"><span class="hs-dot ' + dotClass + '"></span>' +
+              escapeHtml(s.host) + ':' + s.port + '</span>';
+          }).join("")
+        : '<span class="hs-empty">등록된 서버 없음</span>';
+    }
 
     function renderRecommended() {
       recommendGrid.innerHTML = "";
@@ -226,6 +255,7 @@
     }
 
     renderRecommended();
+    renderHeaderServers();
 
     function escapeHtml(s) {
       const d = document.createElement("div");
@@ -283,6 +313,7 @@
         serverListEl.appendChild(li);
       });
       refreshSlotSelects();
+      renderHeaderServers();
     }
 
     // Puts a server into the first empty grid slot (or slot 0 if all slots are already taken).
