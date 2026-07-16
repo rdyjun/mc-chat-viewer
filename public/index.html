@@ -2,8 +2,9 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8" />
-<title>MC Chat Viewer</title>
+<title>마인포탈</title>
 <style>
+  :root { --accent: #9b5de5; --accent-text: #fff; }
   body { font-family: system-ui, sans-serif; background: #1e1e1e; color: #eee; margin: 0; padding: 1.5rem; }
   h1 { font-size: 1.1rem; margin-bottom: 1rem; }
   h2 { font-size: 0.95rem; color: #ccc; margin: 0 0 0.5rem; }
@@ -16,7 +17,7 @@
     transition: color 0.15s, border-color 0.15s;
   }
   .tabNav button:hover { color: #ddd; }
-  .tabNav button.active { color: #fff; border-bottom-color: #4a7; }
+  .tabNav button.active { color: #fff; border-bottom-color: var(--accent); }
   .accountArea { margin-left: auto; display: flex; align-items: center; gap: 0.6rem; }
   #accountStatus { font-size: 0.82rem; color: #ccc; white-space: nowrap; }
   .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); align-items: center; justify-content: center; z-index: 100; }
@@ -41,14 +42,14 @@
   .panel { background: #262626; border-radius: 8px; padding: 1rem; }
   .sidebar { width: 280px; display: flex; flex-direction: column; gap: 1rem; }
   input { padding: 0.4rem; border-radius: 4px; border: 1px solid #444; background: #333; color: #eee; width: 100%; box-sizing: border-box; }
-  button { padding: 0.45rem 0.7rem; border-radius: 4px; border: none; background: #4a7; color: #111; font-weight: bold; cursor: pointer; }
+  button { padding: 0.45rem 0.7rem; border-radius: 4px; border: none; background: var(--accent); color: var(--accent-text); font-weight: bold; cursor: pointer; }
   button:disabled { background: #555; color: #999; cursor: not-allowed; }
   #msaCode { background: #443; border: 1px solid #a90; padding: 0.6rem; border-radius: 6px; font-size: 0.85rem; }
   #msaCode a { color: #fd6; }
   #addServerForm { display: flex; flex-direction: column; gap: 0.5rem; }
   #serverList { list-style: none; padding: 0; margin: 0.5rem 0 0; display: flex; flex-direction: column; gap: 0.4rem; }
   #serverList li { padding: 0.5rem; border-radius: 6px; background: #333; font-size: 0.85rem; }
-  #serverList li.selected { outline: 2px solid #4a7; }
+  #serverList li.selected { outline: 2px solid var(--accent); }
   .server-row { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
   .server-meta { cursor: pointer; }
   .server-status { color: #9ad; font-size: 0.75rem; }
@@ -63,7 +64,7 @@
 </head>
 <body>
   <header class="appHeader">
-    <h1>Minecraft Chat Viewer</h1>
+    <h1>🌀 마인포탈</h1>
     <nav class="tabNav">
       <button type="button" id="tabHomeBtn" class="active">홈</button>
       <button type="button" id="tabListBtn">Play</button>
@@ -112,6 +113,8 @@
           <h2>서버 탐색</h2>
           <div class="explore-links">
             <a class="button-link" href="https://www.minelist.kr" target="_blank" rel="noopener noreferrer">마인리스트 (minelist.kr)</a>
+            <a class="button-link" href="https://minesquare.kr" target="_blank" rel="noopener noreferrer">마인스퀘어 (minesquare.kr)</a>
+            <a class="button-link" href="https://mine.page" target="_blank" rel="noopener noreferrer">마인페이지 (mine.page)</a>
           </div>
         </div>
       </div>
