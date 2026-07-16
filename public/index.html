@@ -40,6 +40,7 @@
   .top-servers .rank-num { font-weight: bold; font-size: 1rem; color: var(--accent); width: 1.4rem; text-align: center; }
   .top-servers .rank-meta { font-size: 0.88rem; }
   .top-servers .rank-count { margin-left: auto; font-size: 0.78rem; color: #9ad; white-space: nowrap; }
+  .top-servers .rank-goto { margin-left: auto; padding: 0.3rem 0.6rem; font-size: 0.78rem; }
   .top-servers .empty { color: #888; font-size: 0.85rem; }
   .ping-badge { font-size: 0.78rem; color: #888; white-space: nowrap; }
   .ping-badge.online { color: #4ade80; }
@@ -125,7 +126,12 @@
   </div>
 
   <div class="view active" id="homeView">
-    <div class="panel">
+    <div class="panel" id="recentServersPanel" style="display:none">
+      <h2>최근 접속 서버</h2>
+      <div class="top-servers" id="recentServers"></div>
+    </div>
+
+    <div class="panel" style="margin-top:1rem">
       <h2>인기 서버 TOP 3</h2>
       <div class="top-servers" id="topServers"></div>
     </div>
@@ -197,6 +203,8 @@
     const serverGridView = document.getElementById("serverGridView");
     const recommendGrid = document.getElementById("recommendGrid");
     const topServersEl = document.getElementById("topServers");
+    const recentServersPanel = document.getElementById("recentServersPanel");
+    const recentServersEl = document.getElementById("recentServers");
     const loginTriggerBtn = document.getElementById("loginTriggerBtn");
     const loginModalBackdrop = document.getElementById("loginModalBackdrop");
     const loginModalClose = document.getElementById("loginModalClose");
@@ -235,7 +243,7 @@
       tabServersBtn.classList.toggle("active", tab === "servers");
     }
 
-    tabHomeBtn.addEventListener("click", () => { showTab("home"); loadTopServers(); });
+    tabHomeBtn.addEventListener("click", () => { showTab("home"); loadTopServers(); loadRecentServers(); });
     tabListBtn.addEventListener("click", () => showTab("list"));
     tabServersBtn.addEventListener("click", () => {
       if (account.status !== "logged-in") {
@@ -338,7 +346,34 @@
       refreshPingBadges(topServersEl);
     }
 
+    async function loadRecentServers() {
+      if (account.status !== "logged-in") {
+        recentServersPanel.style.display = "none";
+        return;
+      }
+      const res = await fetch("/api/servers/recent");
+      if (!res.ok) return;
+      const recent = await res.json();
+      recentServersPanel.style.display = recent.length ? "" : "none";
+      if (!recent.length) return;
+      recentServersEl.innerHTML = recent.map((s) =>
+        '<div class="rank-row" data-id="' + s.id + '">' +
+        '<span class="rank-meta">' + escapeHtml(s.host) + ':' + s.port + '</span>' +
+        pingBadgeHtml(s.host, s.port) +
+        '<button type="button" class="rank-goto">Play로 이동</button>' +
+        '</div>'
+      ).join("");
+      recentServersEl.querySelectorAll(".rank-row").forEach((row) => {
+        row.querySelector(".rank-goto").onclick = () => {
+          assignServerToSlot(row.dataset.id);
+          showTab("list");
+        };
+      });
+      refreshPingBadges(recentServersEl);
+    }
+
     loadTopServers();
+    loadRecentServers();
     renderRecommended();
     renderServerGridView();
 
@@ -363,6 +398,7 @@
         accountStatusEl.textContent = "서버 접속 전, 로그인이 필요합니다.";
         loginTriggerBtn.style.display = "";
       }
+      loadRecentServers();
     }
 
     function renderServers() {

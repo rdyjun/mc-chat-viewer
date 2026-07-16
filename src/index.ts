@@ -14,7 +14,7 @@ import {
   getMicrosoftLoginUrl,
   completeMicrosoftLogin,
 } from "./account";
-import { upsertUser, isServerOwnedByUser, topServers } from "./db";
+import { upsertUser, isServerOwnedByUser, topServers, recentServersForUser } from "./db";
 import { pingServer } from "./protocol/serverPing";
 import {
   addServer,
@@ -130,6 +130,13 @@ app.post("/api/servers", (req, res) => {
 // aggregate across everyone's connect history. Must stay above "/api/servers/:id".
 app.get("/api/servers/top", (_req, res) => {
   res.json(topServers(3));
+});
+
+// Home tab's personal "최근 접속 서버" — this one *is* scoped per-user (it's each user's own
+// history), so it's empty for logged-out visitors instead of leaking anyone else's activity.
+app.get("/api/servers/recent", (req, res) => {
+  const uid = (req as any).uid as string | undefined;
+  res.json(uid ? recentServersForUser(uid, 5) : []);
 });
 
 // True for hostnames/IPs that only make sense on our own private network — blocking these

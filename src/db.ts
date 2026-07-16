@@ -108,3 +108,24 @@ export function topServers(limit: number): TopServerEntry[] {
     )
     .all(limit) as TopServerEntry[];
 }
+
+export interface RecentServerEntry {
+  id: string;
+  host: string;
+  port: number;
+  lastConnectedAt: number;
+}
+
+/** This user's own most-recently-connected servers, most recent first. */
+export function recentServersForUser(userId: string, limit: number): RecentServerEntry[] {
+  return db
+    .prepare(
+      `SELECT server_id as id, host, port, MAX(created_at) as lastConnectedAt
+       FROM connection_logs
+       WHERE user_id = ?
+       GROUP BY server_id
+       ORDER BY lastConnectedAt DESC
+       LIMIT ?`
+    )
+    .all(userId, limit) as RecentServerEntry[];
+}
