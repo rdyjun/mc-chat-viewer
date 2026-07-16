@@ -55,8 +55,13 @@
   .server-status { color: #9ad; font-size: 0.75rem; }
   #chatPanel { flex: 1; min-width: 0; }
   .layout-switcher { display: flex; gap: 0.4rem; margin-bottom: 0.75rem; }
-  .layout-switcher button { background: #333; color: #ccc; font-weight: 600; font-size: 0.8rem; padding: 0.35rem 0.8rem; }
+  .layout-switcher button { background: #333; color: #ccc; padding: 0.4rem 0.6rem; display: flex; align-items: center; }
   .layout-switcher button.active { background: var(--accent); color: var(--accent-text); }
+  .layout-icon { display: inline-grid; gap: 2px; width: 1.1rem; height: 1.1rem; }
+  .layout-icon i { background: currentColor; border-radius: 1px; display: block; }
+  .layout-icon.n1 { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+  .layout-icon.n2 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
+  .layout-icon.n4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
   .chat-grid { display: grid; gap: 0.75rem; }
   .chat-grid[data-layout="1"] { grid-template-columns: 1fr; }
   .chat-grid[data-layout="2"] { grid-template-columns: 1fr 1fr; }
@@ -130,9 +135,9 @@
 
       <div class="panel" id="chatPanel">
         <div class="layout-switcher" id="layoutSwitcher">
-          <button type="button" data-n="1" class="active">1개</button>
-          <button type="button" data-n="2">2개</button>
-          <button type="button" data-n="4">4개</button>
+          <button type="button" data-n="1" class="active" title="1개"><span class="layout-icon n1"><i></i></span></button>
+          <button type="button" data-n="2" title="2개"><span class="layout-icon n2"><i></i><i></i></span></button>
+          <button type="button" data-n="4" title="4개"><span class="layout-icon n4"><i></i><i></i><i></i><i></i></span></button>
         </div>
         <div class="chat-grid" id="chatGrid" data-layout="1"></div>
       </div>
