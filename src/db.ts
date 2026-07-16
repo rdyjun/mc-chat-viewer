@@ -90,25 +90,6 @@ export function logConnection(serverId: string, userId: string, host: string, po
   });
 }
 
-export interface TopServerEntry {
-  host: string;
-  port: number;
-  count: number;
-}
-
-/** Ranks servers by total connect attempts across all users, grouped by host:port. */
-export function topServers(limit: number): TopServerEntry[] {
-  return db
-    .prepare(
-      `SELECT host, port, COUNT(*) as count
-       FROM connection_logs
-       GROUP BY host, port
-       ORDER BY count DESC
-       LIMIT ?`
-    )
-    .all(limit) as TopServerEntry[];
-}
-
 export interface RecentServerEntry {
   id: string;
   host: string;

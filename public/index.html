@@ -41,15 +41,10 @@
   .top-servers .rank-meta { font-size: 0.88rem; }
   .top-servers .rank-count { margin-left: auto; font-size: 0.78rem; color: #9ad; white-space: nowrap; }
   .top-servers .rank-goto { margin-left: auto; padding: 0.3rem 0.6rem; font-size: 0.78rem; }
-  .top-servers .empty, .recommend-grid .empty { color: #888; font-size: 0.85rem; }
+  .top-servers .empty { color: #888; font-size: 0.85rem; }
   .ping-badge { font-size: 0.78rem; color: #888; white-space: nowrap; }
   .ping-badge.online { color: #4ade80; }
   .ping-badge.offline { color: #f87171; }
-  .recommend-grid { display: flex; flex-direction: column; gap: 0.6rem; }
-  .recommend-card { background: #333; border-radius: 6px; padding: 0.6rem 0.8rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
-  .recommend-card .info { font-size: 0.85rem; }
-  .recommend-card .name { font-weight: bold; }
-  .recommend-card .meta { color: #9ad; font-size: 0.78rem; }
   .server-grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.75rem; }
   .server-grid-view .server-card { background: #333; border-radius: 8px; padding: 0.8rem; display: flex; flex-direction: column; gap: 0.5rem; }
   .server-grid-view .server-card .name { font-weight: bold; font-size: 0.95rem; }
@@ -64,7 +59,7 @@
   input { padding: 0.4rem; border-radius: 4px; border: 1px solid #444; background: #333; color: #eee; width: 100%; box-sizing: border-box; }
   button { padding: 0.45rem 0.7rem; border-radius: 4px; border: none; background: var(--accent); color: var(--accent-text); font-weight: bold; cursor: pointer; }
   button:disabled { background: #555; color: #999; cursor: not-allowed; }
-  #addServerForm { display: flex; flex-direction: column; gap: 0.5rem; }
+  #addServerForm, #addServerForm2 { display: flex; flex-direction: column; gap: 0.5rem; }
   #serverList { list-style: none; padding: 0; margin: 0.5rem 0 0; display: flex; flex-direction: column; gap: 0.4rem; }
   #serverList li { padding: 0.5rem; border-radius: 6px; background: #333; font-size: 0.85rem; }
   #serverList li.selected { outline: 2px solid var(--accent); }
@@ -107,8 +102,8 @@
   <header class="appHeader">
     <div class="logo-wrap"><img src="/logo.png" alt="MinePortal" /></div>
     <nav class="tabNav">
-      <button type="button" id="tabHomeBtn" class="active">홈</button>
-      <button type="button" id="tabListBtn">Play</button>
+      <button type="button" id="tabHomeBtn">홈</button>
+      <button type="button" id="tabListBtn" class="active">Play</button>
       <button type="button" id="tabServersBtn">서버 목록</button>
     </nav>
     <div class="accountArea">
@@ -125,24 +120,14 @@
     </div>
   </div>
 
-  <div class="view active" id="homeView">
+  <div class="view" id="homeView">
     <div class="panel" id="recentServersPanel" style="display:none">
       <h2>최근 접속 서버</h2>
       <div class="top-servers" id="recentServers"></div>
     </div>
-
-    <div class="panel" style="margin-top:1rem">
-      <h2>인기 서버 TOP 3</h2>
-      <div class="top-servers" id="topServers"></div>
-    </div>
-
-    <div class="panel" style="margin-top:1rem">
-      <h2>추천 서버</h2>
-      <div class="recommend-grid" id="recommendGrid"></div>
-    </div>
   </div>
 
-  <div class="view" id="listView">
+  <div class="view active" id="listView">
     <div class="layout">
       <div class="sidebar">
         <div class="panel">
@@ -183,6 +168,16 @@
 
   <div class="view" id="serversView">
     <div class="panel">
+      <h2>서버 추가</h2>
+      <form id="addServerForm2">
+        <input name="host" placeholder="서버 주소" required />
+        <input name="port" placeholder="포트 (기본 25565)" />
+        <input name="version" placeholder="버전 (예: 26.1.2 또는 775)" required />
+        <button type="submit">추가</button>
+      </form>
+    </div>
+
+    <div class="panel" style="margin-top:1rem">
       <h2>서버 목록</h2>
       <div class="server-grid-view" id="serverGridView"></div>
     </div>
@@ -201,8 +196,7 @@
     const listView = document.getElementById("listView");
     const serversView = document.getElementById("serversView");
     const serverGridView = document.getElementById("serverGridView");
-    const recommendGrid = document.getElementById("recommendGrid");
-    const topServersEl = document.getElementById("topServers");
+    const addServerForm2 = document.getElementById("addServerForm2");
     const recentServersPanel = document.getElementById("recentServersPanel");
     const recentServersEl = document.getElementById("recentServers");
     const loginTriggerBtn = document.getElementById("loginTriggerBtn");
@@ -229,9 +223,6 @@
     let slots = [{ serverId: null }]; // one entry per visible chat-grid slot
     let slotRefs = []; // DOM refs parallel to `slots`, rebuilt whenever the layout changes
 
-    // Curated list — add whatever servers you actually want to recommend here.
-    const recommendedServers = [];
-
     function showTab(tab) {
       homeView.classList.toggle("active", tab === "home");
       listView.classList.toggle("active", tab === "list");
@@ -241,7 +232,7 @@
       tabServersBtn.classList.toggle("active", tab === "servers");
     }
 
-    tabHomeBtn.addEventListener("click", () => { showTab("home"); loadTopServers(); loadRecentServers(); });
+    tabHomeBtn.addEventListener("click", () => { showTab("home"); loadRecentServers(); });
     tabListBtn.addEventListener("click", () => showTab("list"));
     tabServersBtn.addEventListener("click", () => {
       if (account.status !== "logged-in") {
@@ -298,56 +289,6 @@
       refreshPingBadges(serverGridView);
     }
 
-    function renderRecommended() {
-      recommendGrid.innerHTML = "";
-      if (!recommendedServers.length) {
-        recommendGrid.innerHTML = '<div class="empty">아직 추천 서버가 없습니다.</div>';
-        return;
-      }
-      recommendedServers.forEach((r) => {
-        const card = document.createElement("div");
-        card.className = "recommend-card";
-        card.innerHTML =
-          '<div class="info"><div class="name">' + escapeHtml(r.name) + '</div>' +
-          '<div class="meta">' + escapeHtml(r.host) + ':' + r.port + ' · ' + escapeHtml(r.version) + ' · ' + pingBadgeHtml(r.host, r.port) + '</div></div>' +
-          '<button type="button">내 목록에 추가</button>';
-        card.querySelector("button").onclick = () => addRecommended(r);
-        recommendGrid.appendChild(card);
-      });
-      refreshPingBadges(recommendGrid);
-    }
-
-    async function addRecommended(r) {
-      const res = await fetch("/api/servers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ host: r.host, port: r.port, version: r.version }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: res.statusText }));
-        alert("추가 실패: " + body.error);
-        return;
-      }
-      showTab("list");
-    }
-
-    async function loadTopServers() {
-      const res = await fetch("/api/servers/top");
-      if (!res.ok) return;
-      const top = await res.json();
-      topServersEl.innerHTML = top.length
-        ? top.map((s, i) =>
-            '<div class="rank-row">' +
-            '<span class="rank-num">' + (i + 1) + '</span>' +
-            '<span class="rank-meta">' + escapeHtml(s.host) + ':' + s.port + '</span>' +
-            pingBadgeHtml(s.host, s.port) +
-            '<span class="rank-count">' + s.count + '회 접속</span>' +
-            '</div>'
-          ).join("")
-        : '<div class="empty">아직 접속 기록이 없습니다.</div>';
-      refreshPingBadges(topServersEl);
-    }
-
     async function loadRecentServers() {
       if (account.status !== "logged-in") {
         recentServersPanel.style.display = "none";
@@ -374,9 +315,7 @@
       refreshPingBadges(recentServersEl);
     }
 
-    loadTopServers();
     loadRecentServers();
-    renderRecommended();
     renderServerGridView();
 
     function escapeHtml(s) {
@@ -575,9 +514,9 @@
 
     setLayout(1);
 
-    addServerForm.addEventListener("submit", async (e) => {
+    async function submitAddServer(e, form) {
       e.preventDefault();
-      const data = Object.fromEntries(new FormData(addServerForm).entries());
+      const data = Object.fromEntries(new FormData(form).entries());
       const res = await fetch("/api/servers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -588,8 +527,11 @@
         alert("서버 추가 실패: " + body.error);
         return;
       }
-      addServerForm.reset();
-    });
+      form.reset();
+    }
+
+    addServerForm.addEventListener("submit", (e) => submitAddServer(e, addServerForm));
+    addServerForm2.addEventListener("submit", (e) => submitAddServer(e, addServerForm2));
 
     const ws = new WebSocket(`ws://${location.host}`);
     ws.onmessage = (evt) => {

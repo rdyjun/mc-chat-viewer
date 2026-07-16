@@ -14,7 +14,7 @@ import {
   getMicrosoftLoginUrl,
   completeMicrosoftLogin,
 } from "./account";
-import { upsertUser, isServerOwnedByUser, topServers, recentServersForUser } from "./db";
+import { upsertUser, isServerOwnedByUser, recentServersForUser } from "./db";
 import { pingServer } from "./protocol/serverPing";
 import {
   addServer,
@@ -124,12 +124,6 @@ app.post("/api/servers", (req, res) => {
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
-});
-
-// Public: powers the Home tab's "인기 서버" ranking — not scoped per-user, since it's an
-// aggregate across everyone's connect history. Must stay above "/api/servers/:id".
-app.get("/api/servers/top", (_req, res) => {
-  res.json(topServers(3));
 });
 
 // Home tab's personal "최근 접속 서버" — this one *is* scoped per-user (it's each user's own
