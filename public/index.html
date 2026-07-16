@@ -216,7 +216,14 @@
 
     tabHomeBtn.addEventListener("click", () => showTab("home"));
     tabListBtn.addEventListener("click", () => showTab("list"));
-    tabServersBtn.addEventListener("click", () => showTab("servers"));
+    tabServersBtn.addEventListener("click", () => {
+      if (account.status !== "logged-in") {
+        alert("서버 목록은 로그인한 사용자만 볼 수 있습니다.");
+        openLoginModal();
+        return;
+      }
+      showTab("servers");
+    });
 
     function renderServerGridView() {
       serverGridView.innerHTML = servers.length
