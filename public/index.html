@@ -10,7 +10,7 @@
   h1 { font-size: 1.1rem; margin-bottom: 1rem; }
   h2 { font-size: 0.95rem; color: #ccc; margin: 0 0 0.5rem; }
   header.appHeader { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 1.25rem; }
-  .logo-wrap { height: 2.3rem; overflow: hidden; display: flex; align-items: center; }
+  .logo-wrap { height: 2.3rem; overflow: hidden; display: flex; align-items: center; cursor: pointer; }
   .logo-wrap img { height: 9rem; width: auto; object-fit: cover; object-position: center; }
   .tabNav { display: flex; gap: 1.4rem; }
   .tabNav button {
@@ -100,10 +100,10 @@
 </head>
 <body>
   <header class="appHeader">
-    <div class="logo-wrap"><img src="/logo.png" alt="MinePortal" /></div>
+    <div class="logo-wrap" id="logoBtn"><img src="/logo.png" alt="MinePortal" /></div>
     <nav class="tabNav">
-      <button type="button" id="tabHomeBtn">홈</button>
-      <button type="button" id="tabListBtn" class="active">Play</button>
+      <button type="button" id="tabHomeBtn" style="display:none">홈</button>
+      <button type="button" id="tabListBtn" class="active" style="display:none">Play</button>
       <button type="button" id="tabServersBtn">서버 목록</button>
     </nav>
     <div class="accountArea">
@@ -189,6 +189,7 @@
     const serverListEl = document.getElementById("serverList");
     const layoutSwitcher = document.getElementById("layoutSwitcher");
     const chatGrid = document.getElementById("chatGrid");
+    const logoBtn = document.getElementById("logoBtn");
     const tabHomeBtn = document.getElementById("tabHomeBtn");
     const tabListBtn = document.getElementById("tabListBtn");
     const tabServersBtn = document.getElementById("tabServersBtn");
@@ -233,6 +234,7 @@
     }
 
     tabHomeBtn.addEventListener("click", () => { showTab("home"); loadRecentServers(); });
+    logoBtn.addEventListener("click", () => showTab("list"));
     tabListBtn.addEventListener("click", () => showTab("list"));
     tabServersBtn.addEventListener("click", () => {
       if (account.status !== "logged-in") {
