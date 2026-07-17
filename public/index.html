@@ -35,6 +35,15 @@
   }
   .view { display: none; }
   .view.active { display: block; }
+  .hero { padding: 2.5rem 1rem 3rem; text-align: center; }
+  .hero h1 { font-size: 1.6rem; margin-bottom: 0.6rem; }
+  .hero p { color: #aaa; font-size: 0.95rem; margin-bottom: 1.6rem; }
+  .hero-buttons { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+  .hero-buttons a, .hero-buttons button { padding: 0.7rem 1.4rem; font-size: 0.95rem; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; }
+  .btn-download { background: var(--accent); color: var(--accent-text); }
+  .btn-try { background: #333; color: #eee; border: 1px solid #555; }
+  .btn-try:hover { background: #3a3a3a; }
+  .hero-note { margin-top: 0.9rem; font-size: 0.78rem; color: #777; }
   .top-servers { display: flex; flex-direction: column; gap: 0.5rem; }
   .top-servers .rank-row { display: flex; align-items: center; gap: 0.75rem; background: #333; border-radius: 6px; padding: 0.55rem 0.8rem; }
   .top-servers .rank-num { font-weight: bold; font-size: 1rem; color: var(--accent); width: 1.4rem; text-align: center; }
@@ -115,8 +124,8 @@
   <header class="appHeader">
     <div class="logo-wrap" id="logoBtn"><img src="/logo.png" alt="MinePortal" /></div>
     <nav class="tabNav">
-      <button type="button" id="tabHomeBtn" style="display:none">홈</button>
-      <button type="button" id="tabListBtn" class="active" style="display:none">Play</button>
+      <button type="button" id="tabHomeBtn" class="active" style="display:none">홈</button>
+      <button type="button" id="tabListBtn" style="display:none">Play</button>
       <button type="button" id="tabServersBtn">서버 목록</button>
     </nav>
     <div class="accountArea">
@@ -146,14 +155,23 @@
     </div>
   </div>
 
-  <div class="view" id="homeView">
+  <div class="view active" id="homeView">
+    <div class="hero">
+      <h1>마인포탈</h1>
+      <p>내 마인크래프트 계정으로 서버 채팅을 보고, 보내세요.</p>
+      <div class="hero-buttons">
+        <a class="btn-download" id="downloadBtn" href="https://github.com/rdyjun/mc-chat-viewer/releases/latest" target="_blank" rel="noopener noreferrer">⬇ 다운로드</a>
+        <button type="button" class="btn-try" id="tryWebBtn">🌐 웹에서 체험하기</button>
+      </div>
+      <div class="hero-note">데스크톱 프로그램은 내 PC에서 직접 접속해 IP 제한이 있는 서버에서도 안정적으로 동작해요.</div>
+    </div>
     <div class="panel" id="recentServersPanel" style="display:none">
       <h2>최근 접속 서버</h2>
       <div class="top-servers" id="recentServers"></div>
     </div>
   </div>
 
-  <div class="view active" id="listView">
+  <div class="view" id="listView">
     <div class="layout">
       <div class="sidebar">
         <div class="panel">
@@ -213,6 +231,7 @@
     const addServerBtn2 = document.getElementById("addServerBtn2");
     const recentServersPanel = document.getElementById("recentServersPanel");
     const recentServersEl = document.getElementById("recentServers");
+    const tryWebBtn = document.getElementById("tryWebBtn");
     const loginTriggerBtn = document.getElementById("loginTriggerBtn");
     const loginModalBackdrop = document.getElementById("loginModalBackdrop");
     const loginModalClose = document.getElementById("loginModalClose");
@@ -264,8 +283,9 @@
     }
 
     tabHomeBtn.addEventListener("click", () => { showTab("home"); loadRecentServers(); });
-    logoBtn.addEventListener("click", () => showTab("list"));
+    logoBtn.addEventListener("click", () => { showTab("home"); loadRecentServers(); });
     tabListBtn.addEventListener("click", () => showTab("list"));
+    tryWebBtn.addEventListener("click", () => showTab("list"));
     tabServersBtn.addEventListener("click", () => {
       if (account.status !== "logged-in") {
         alert("서버 목록은 로그인한 사용자만 볼 수 있습니다.");

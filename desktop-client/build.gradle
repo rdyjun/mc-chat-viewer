@@ -1,0 +1,54 @@
+plugins {
+    id 'application'
+    id 'com.gradleup.shadow' version '9.1.0'
+}
+
+group = 'com.mineportal'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+repositories {
+    mavenCentral()
+    // MCProtocolLib is published here (GeyserMC / OpenCollab)
+    maven { url 'https://repo.opencollab.dev/main/' }
+    // MinecraftAuth and its net.lenni0451 dependencies
+    maven { url 'https://maven.lenni0451.net/releases' }
+}
+
+dependencies {
+    implementation 'org.geysermc.mcprotocollib:protocol:1.21.7-1'
+    implementation 'net.raphimc:MinecraftAuth:4.1.1'
+    implementation 'net.kyori:adventure-text-serializer-plain:4.17.0'
+    implementation 'com.google.code.gson:gson:2.11.0'
+    implementation 'org.slf4j:slf4j-simple:2.0.16'
+}
+
+application {
+    mainClass = 'com.mineportal.Main'
+}
+
+// The version string the running app reports (used for update checks).
+// Kept in sync with the project version above.
+tasks.named('processResources') {
+    inputs.property('appVersion', project.version)
+    filesMatching('version.properties') {
+        expand(appVersion: project.version)
+    }
+}
+
+tasks.named('shadowJar') {
+    archiveBaseName.set('mineportal-client')
+    archiveClassifier.set('')
+    archiveVersion.set('')
+    // Merge service files so SLF4J / others resolve correctly in the fat jar.
+    mergeServiceFiles()
+}
+
+// Make `build` produce the fat jar.
+tasks.named('build') {
+    dependsOn 'shadowJar'
+}
