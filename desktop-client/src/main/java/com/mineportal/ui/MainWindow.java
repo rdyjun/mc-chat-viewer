@@ -4,6 +4,7 @@ import com.mineportal.BuildInfo;
 import com.mineportal.auth.Account;
 import com.mineportal.auth.AuthService;
 import com.mineportal.mc.ChatClient;
+import com.mineportal.status.StatusServer;
 import com.mineportal.store.ServerEntry;
 import com.mineportal.store.ServerStore;
 import com.mineportal.update.Updater;
@@ -26,12 +27,21 @@ import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
+import java.awt.AWTException;
 import java.awt.BorderLayout;
+import java.awt.MenuItem;
+import java.awt.PopupMenu;
+import java.awt.SystemTray;
+import java.awt.TrayIcon;
 import java.awt.datatransfer.StringSelection;
 import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Image;
 import java.awt.Toolkit;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.awt.image.BufferedImage;
 import java.net.URI;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -41,9 +51,12 @@ public final class MainWindow extends JFrame {
 
     private final AuthService authService = new AuthService();
     private final Updater updater = new Updater();
+    private final StatusServer statusServer;
 
     private Account account;
     private ChatClient client;
+    private volatile String connectedServerLabel;
+    private TrayIcon trayIcon;
 
     private final DefaultListModel<ServerEntry> serverModel = new DefaultListModel<>();
     private final JList<ServerEntry> serverList = new JList<>(serverModel);
@@ -62,16 +75,77 @@ public final class MainWindow extends JFrame {
 
     public MainWindow() {
         super("MinePortal 데스크톱 - v" + BuildInfo.VERSION);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        this.statusServer = new StatusServer(this::isLoggedIn, this::isConnected, () -> connectedServerLabel);
         setSize(860, 560);
         setLocationRelativeTo(null);
 
         buildUi();
         loadServers();
         refreshState();
+        setupTray();
 
         restoreSessionAsync();
         checkForUpdatesAsync();
+        statusServer.start();
+    }
+
+    /**
+     * Closing the window hides it to the tray instead of exiting, so the desktop
+     * client keeps running in the background and stays reachable by the web page
+     * via the local status server. Exiting for real happens from the tray menu.
+     */
+    private void setupTray() {
+        if (!SystemTray.isSupported()) {
+            setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            return;
+        }
+
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                setVisible(false);
+            }
+        });
+
+        PopupMenu menu = new PopupMenu();
+        MenuItem open = new MenuItem("열기");
+        open.addActionListener(e -> {
+            setVisible(true);
+            setState(java.awt.Frame.NORMAL);
+            toFront();
+        });
+        MenuItem exit = new MenuItem("종료");
+        exit.addActionListener(e -> {
+            statusServer.stop();
+            System.exit(0);
+        });
+        menu.add(open);
+        menu.addSeparator();
+        menu.add(exit);
+
+        TrayIcon icon = new TrayIcon(trayImage(), "MinePortal 데스크톱", menu);
+        icon.setImageAutoSize(true);
+        icon.addActionListener(e -> {
+            setVisible(true);
+            setState(java.awt.Frame.NORMAL);
+            toFront();
+        });
+        try {
+            SystemTray.getSystemTray().add(icon);
+            trayIcon = icon;
+        } catch (AWTException ex) {
+            setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        }
+    }
+
+    private static Image trayImage() {
+        BufferedImage image = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g = image.createGraphics();
+        g.setColor(new java.awt.Color(0x2ecc71));
+        g.fillOval(0, 0, 16, 16);
+        g.dispose();
+        return image;
     }
 
     private void buildUi() {
@@ -300,6 +374,7 @@ public final class MainWindow extends JFrame {
         ChatClient newClient = new ChatClient(account, new ChatClient.Listener() {
             @Override
             public void onConnected() {
+                connectedServerLabel = entry.host + ":" + entry.port;
                 SwingUtilities.invokeLater(() -> {
                     append("서버에 연결되었습니다.");
                     refreshState();
@@ -313,6 +388,7 @@ public final class MainWindow extends JFrame {
 
             @Override
             public void onDisconnected(String reason) {
+                connectedServerLabel = null;
                 SwingUtilities.invokeLater(() -> {
                     append("접속 종료: " + reason);
                     refreshState();

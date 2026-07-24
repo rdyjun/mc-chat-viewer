@@ -119,6 +119,11 @@
   .slot-chat-form { display: flex; gap: 0.5rem; }
   .line { padding: 0.2rem 0; border-bottom: 1px solid #333; font-size: 0.9rem; word-break: break-word; }
   .time { color: #888; font-size: 0.8rem; margin-right: 0.5rem; }
+  .trial-warning {
+    display: none; align-items: center; gap: 0.5rem; background: #4a3a12; border: 1px solid #a97c1f;
+    color: #ffd98a; border-radius: 6px; padding: 0.65rem 0.9rem; font-size: 0.82rem; margin-bottom: 1rem;
+  }
+  .trial-warning.show { display: flex; }
 </style>
 </head>
 <body>
@@ -126,7 +131,7 @@
     <div class="logo-wrap" id="logoBtn"><img src="/logo.png" alt="MinePortal" /></div>
     <nav class="tabNav">
       <button type="button" id="tabHomeBtn" class="active" style="display:none">홈</button>
-      <button type="button" id="tabListBtn" style="display:none">Play</button>
+      <button type="button" id="tabListBtn">플레이</button>
       <button type="button" id="tabServersBtn">서버 목록</button>
       <button type="button" id="tryWebHeaderBtn">체험하기</button>
     </nav>
@@ -165,7 +170,7 @@
         <a class="btn-download" id="downloadBtn" href="https://github.com/rdyjun/mc-chat-viewer/releases/latest/download/mineportal-client.jar">⬇ 다운로드</a>
         <button type="button" class="btn-try" id="tryWebBtn">🌐 웹에서 체험하기</button>
       </div>
-      <div class="hero-note">데스크톱 프로그램은 내 PC에서 직접 접속해 IP 제한이 있는 서버에서도 안정적으로 동작해요.</div>
+      <div class="hero-note" id="desktopStatusNote">데스크톱 프로그램은 내 PC에서 직접 접속해 IP 제한이 있는 서버에서도 안정적으로 동작해요.</div>
     </div>
     <div class="panel" id="recentServersPanel" style="display:none">
       <h2>최근 접속 서버</h2>
@@ -174,6 +179,7 @@
   </div>
 
   <div class="view" id="listView">
+    <div class="trial-warning" id="trialWarning">⚠ 지금은 <b>웹 체험 모드</b>예요. 이 방식은 서버가 대신 접속을 대리해주는 방식이라, 공인/실서버에 접속하면 "동일 IP 다중 접속" 등으로 인식되어 <b>밴(차단)</b>될 수 있어요. 실제 플레이는 상단 <b>플레이</b> 탭이나 데스크톱 클라이언트 사용을 권장합니다.</div>
     <div class="layout">
       <div class="sidebar">
         <div class="panel">
@@ -235,6 +241,7 @@
     const recentServersEl = document.getElementById("recentServers");
     const tryWebBtn = document.getElementById("tryWebBtn");
     const tryWebHeaderBtn = document.getElementById("tryWebHeaderBtn");
+    const trialWarning = document.getElementById("trialWarning");
     const loginTriggerBtn = document.getElementById("loginTriggerBtn");
     const loginModalBackdrop = document.getElementById("loginModalBackdrop");
     const loginModalClose = document.getElementById("loginModalClose");
@@ -270,26 +277,58 @@
       if (e.target === loginModalBackdrop) closeLoginModal();
     });
 
+    // Desktop client detection — the desktop app runs a loopback-only status
+    // server (see desktop-client StatusServer.PORT) so the web page can tell
+    // whether it's already running in the background on this machine.
+    const DESKTOP_CLIENT_PORT = 47893;
+    const desktopStatusNote = document.getElementById("desktopStatusNote");
+    const downloadBtn = document.getElementById("downloadBtn");
+
+    async function checkDesktopClient() {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 800);
+        const res = await fetch("http://127.0.0.1:" + DESKTOP_CLIENT_PORT + "/status", {
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        if (!res.ok) throw new Error("bad status");
+        const data = await res.json();
+        downloadBtn.textContent = "✅ 데스크톱 클라이언트 실행 중 (v" + data.version + ")";
+        downloadBtn.href = "#";
+        desktopStatusNote.textContent = data.connected
+          ? "데스크톱 클라이언트가 " + data.server + " 에 접속되어 있어요."
+          : "데스크톱 클라이언트가 백그라운드에서 실행 중이에요.";
+      } catch (err) {
+        // Not reachable — client isn't running (or isn't installed). Leave the
+        // download button/text as-is.
+      }
+    }
+
+    checkDesktopClient();
+
     let account = { status: "logged-out" };
     let servers = [];
     let layout = 1;
     let slots = [{ serverId: null }]; // one entry per visible chat-grid slot
     let slotRefs = []; // DOM refs parallel to `slots`, rebuilt whenever the layout changes
 
-    function showTab(tab) {
+    function showTab(tab, opts) {
+      const trial = !!(opts && opts.trial);
       homeView.classList.toggle("active", tab === "home");
       listView.classList.toggle("active", tab === "list");
       serversView.classList.toggle("active", tab === "servers");
       tabHomeBtn.classList.toggle("active", tab === "home");
       tabListBtn.classList.toggle("active", tab === "list");
       tabServersBtn.classList.toggle("active", tab === "servers");
+      if (tab === "list") trialWarning.classList.toggle("show", trial);
     }
 
     tabHomeBtn.addEventListener("click", () => { showTab("home"); loadRecentServers(); });
     logoBtn.addEventListener("click", () => { showTab("home"); loadRecentServers(); });
     tabListBtn.addEventListener("click", () => showTab("list"));
-    tryWebBtn.addEventListener("click", () => showTab("list"));
-    tryWebHeaderBtn.addEventListener("click", () => showTab("list"));
+    tryWebBtn.addEventListener("click", () => showTab("list", { trial: true }));
+    tryWebHeaderBtn.addEventListener("click", () => showTab("list", { trial: true }));
     tabServersBtn.addEventListener("click", () => {
       if (account.status !== "logged-in") {
         alert("서버 목록은 로그인한 사용자만 볼 수 있습니다.");
