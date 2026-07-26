@@ -398,7 +398,7 @@
       loginModalBackdrop.classList.remove("open");
     }
 
-    loginTriggerBtn.addEventListener("click", openLoginModal);
+    loginTriggerBtn.addEventListener("click", () => openLoginModal());
     loginModalClose.addEventListener("click", closeLoginModal);
     loginModalBackdrop.addEventListener("click", (e) => {
       if (e.target === loginModalBackdrop) closeLoginModal();
