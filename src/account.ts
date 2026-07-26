@@ -105,6 +105,32 @@ function writeMsalCache(serialized: string) {
   fs.writeFileSync(msalCacheFile(), serialized, "utf8");
 }
 
+/**
+ * MSAL/prismarine-auth errors surface as raw English exception messages (often an internal
+ * MSAL error code plus the underlying AADSTS code, e.g. "post_request_failed: ... invalid_grant").
+ * Translate the ones we actually see in practice into a plain-Korean explanation so the
+ * dashboard doesn't show an untranslated wall of English to the user.
+ */
+function translateAuthError(message: string): string {
+  const m = message || "";
+  if (/invalid_grant/i.test(m) || /AADSTS70008/.test(m)) {
+    return "로그인 세션이 만료됐거나 이미 사용된 인증 코드예요. 다시 로그인해주세요.";
+  }
+  if (/invalid_client/i.test(m) || /AADSTS7000215|AADSTS700016/.test(m)) {
+    return "서버의 Microsoft 로그인 설정(클라이언트 ID/시크릿)이 올바르지 않아요. 관리자에게 문의해주세요.";
+  }
+  if (/(consent_required|interaction_required|AADSTS65001)/i.test(m)) {
+    return "Microsoft 계정 동의가 필요해요. 로그인을 다시 진행해주세요.";
+  }
+  if (/(ECONNREFUSED|ENOTFOUND|ETIMEDOUT|EAI_AGAIN|network)/i.test(m)) {
+    return "네트워크 문제로 Microsoft 서버에 연결하지 못했어요. 잠시 후 다시 시도해주세요.";
+  }
+  if (/does not have.*Minecraft|doesn'?t own|xbox live account/i.test(m)) {
+    return "이 Microsoft 계정에는 마인크래프트 자바 에디션이 연결되어 있지 않아요.";
+  }
+  return "로그인 처리 중 알 수 없는 오류가 발생했어요. 다시 시도해도 안 되면 관리자에게 문의해주세요.";
+}
+
 let msalApp: ConfidentialClientApplication | undefined;
 
 function getMsalApp(): ConfidentialClientApplication {
@@ -167,7 +193,7 @@ export async function completeMicrosoftLogin(code: string): Promise<void> {
     setState({ status: "logged-in", token, profile: profile as Profile });
     rememberLogin();
   } catch (err: any) {
-    setState({ status: "error", error: err.message });
+    setState({ status: "error", error: translateAuthError(err.message) });
   }
 }
 
@@ -198,6 +224,6 @@ export function tryResumeSession() {
       setState({ status: "logged-in", token, profile: profile as Profile });
     })
     .catch((err) => {
-      setState({ status: "error", error: err.message });
+      setState({ status: "error", error: translateAuthError(err.message) });
     });
 }

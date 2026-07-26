@@ -37,6 +37,20 @@
   .tabNav button.active { color: #fff; border-bottom-color: var(--accent); }
   .accountArea { margin-left: auto; display: flex; align-items: center; gap: 0.6rem; }
   #accountStatus { font-size: 0.82rem; color: #ccc; white-space: nowrap; }
+  .info-icon {
+    position: relative; display: inline-flex; align-items: center; justify-content: center;
+    width: 1rem; height: 1rem; margin-left: 0.3rem; border-radius: 50%;
+    color: #f87171; cursor: help; font-size: 0.85rem; line-height: 1;
+  }
+  .info-tip {
+    display: none; position: absolute; bottom: calc(100% + 0.4rem); right: 0;
+    width: max-content; max-width: 20rem; white-space: normal; text-align: left;
+    background: rgba(38,38,46,0.92); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--glass-border); border-radius: 8px; padding: 0.5rem 0.65rem;
+    color: #eee; font-size: 0.75rem; line-height: 1.4; cursor: text;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.45); z-index: 50;
+  }
+  .info-icon:hover .info-tip, .info-icon:focus .info-tip { display: block; }
   .modal-backdrop {
     display: none; position: fixed; inset: 0; background: rgba(8,8,12,0.55);
     backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
@@ -559,7 +573,8 @@
         accountStatusEl.textContent = "로그인 진행 중...";
         loginTriggerBtn.style.display = "none";
       } else if (account.status === "error") {
-        accountStatusEl.textContent = "로그인 실패: " + account.error;
+        accountStatusEl.innerHTML = "로그인 실패 " +
+          '<span class="info-icon" tabindex="0">ⓘ<span class="info-tip">' + escapeHtml(account.error) + '</span></span>';
         loginTriggerBtn.style.display = "";
       } else {
         accountStatusEl.textContent = "서버 접속 전, 로그인이 필요합니다.";
