@@ -391,11 +391,12 @@ export class RawMcClient extends EventEmitter {
    * Checksum byte): Global Index, Sender UUID, Index, Message Signature (prefixed optional,
    * fixed 256 bytes), Message, Timestamp, Salt, Previous Messages (prefixed array of {Message
    * ID, [Signature if ID==0]}), Unsigned Content (prefixed optional Text Component), Filter
-   * Type (+ Filter Type Bits if partially filtered), Chat Type, Sender Name, Target Name
-   * (prefixed optional). We only need Message (and Unsigned Content, when present, is the
-   * nicer decorated version of it) — the rest is parsed just to stay correctly positioned in
-   * case a future caller wants it, though nothing past Message currently affects the emitted
-   * chat text.
+   * Type (+ Filter Type Bits, a fixed 20-bit BitSet serialized as one Long, if partially
+   * filtered), Chat Type (VarInt registry ID into minecraft:chat_type — we don't track that
+   * registry, so we render every chat type the same way rather than resolving its exact
+   * translation/decoration), Sender Name (Text Component — the player's nickname/title, with
+   * any team prefix/suffix folded into its `extra` array), Target Name (prefixed optional Text
+   * Component, only set for whispers).
    */
   private handlePlayerChatMessage(reader: PacketReader) {
     try {
@@ -420,7 +421,15 @@ export class RawMcClient extends EventEmitter {
         displayText = textComponentToPlainText(reader.readNbt());
       }
 
-      this.emit("chat", { text: displayText, raw: "player" } as ChatEvent);
+      const filterType = reader.readVarInt();
+      if (filterType === 2) reader.readFixedBytes(8); // PARTIALLY_FILTERED: 20-bit BitSet as one Long
+      reader.readVarInt(); // chat type registry id
+      const senderName = textComponentToPlainText(reader.readNbt());
+      const hasTargetName = reader.readBoolean();
+      const targetName = hasTargetName ? textComponentToPlainText(reader.readNbt()) : null;
+
+      const prefix = targetName ? `${senderName} -> ${targetName}` : senderName;
+      this.emit("chat", { text: `<${prefix}> ${displayText}`, raw: "player" } as ChatEvent);
     } catch {
       this.emit("chat", { text: "[플레이어 채팅 메시지 — 파싱 실패]", raw: "player" } as ChatEvent);
     }
