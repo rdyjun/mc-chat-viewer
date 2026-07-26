@@ -181,12 +181,12 @@
   #serverList li {
     padding: 0.7rem; border-radius: 10px; font-size: 0.85rem; cursor: grab;
     background: rgba(255,255,255,0.05); border: 1px solid transparent;
+    display: flex; align-items: center; gap: 0.9rem;
   }
   #serverList li.selected { border-color: var(--accent); background: rgba(155,93,229,0.14); }
-  .server-row { display: flex; align-items: center; gap: 0.6rem; }
-  .server-meta { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .server-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+  .server-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .server-status { color: #9ad; font-size: 0.75rem; }
-  .server-ping { margin-top: 0.25rem; }
   .drag-handle {
     flex-shrink: 0; width: 3px; height: 3px; border-radius: 50%; background: #888;
     margin-left: 0.15rem;
@@ -756,12 +756,12 @@
         li.className = slots.some((slot) => slot.serverId === s.id) ? "selected" : "";
         li.draggable = true;
         li.innerHTML =
-          '<div class="server-row">' +
           '<span class="drag-handle" aria-hidden="true"></span>' +
+          '<div class="server-info">' +
           '<span class="server-meta">' + escapeHtml(s.host) + ':' + s.port + '</span>' +
-          '</div>' +
           '<div class="server-ping">' + pingBadgeHtml(s.host, s.port) + '</div>' +
-          '<div class="server-status">' + escapeHtml(s.status) + '</div>';
+          '<div class="server-status">' + escapeHtml(s.status) + '</div>' +
+          '</div>';
 
         li.addEventListener("dragstart", (e) => {
           e.dataTransfer.setData("text/plain", s.id);
