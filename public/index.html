@@ -2,6 +2,21 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8" />
+<script>
+  // Defined here (before any button markup) and called right after each download
+  // button in the HTML below, so the label is correct on first paint instead of
+  // flashing generic "다운로드" text and then flipping once the page's main script
+  // runs at the bottom of the body.
+  var IS_WINDOWS = /Win/i.test(navigator.platform || navigator.userAgent || "");
+  function applyDownloadAvailability(el) {
+    if (IS_WINDOWS) {
+      el.textContent = "⬇ Download for Windows";
+    } else {
+      el.textContent = "🚧 다른 OS는 준비 중이에요";
+      el.classList.add("btn-disabled");
+    }
+  }
+</script>
 <title>마인포탈</title>
 <link rel="icon" type="image/png" href="/favicon.png" />
 <style>
@@ -344,6 +359,7 @@
       <p>플레이 탭은 내 PC에서 직접 서버에 접속하는 데스크톱 클라이언트가 실행 중일 때만 이용할 수 있어요.<br />프로그램을 내려받아 실행한 뒤 다시 시도해주세요.</p>
       <div class="gate-buttons">
         <a class="btn-download" id="gateDownloadBtn" href="https://github.com/rdyjun/mc-chat-viewer/releases/latest/download/MinePortal-win.zip">⬇ 다운로드</a>
+        <script>applyDownloadAvailability(document.getElementById("gateDownloadBtn"));</script>
       </div>
     </div>
   </div>
@@ -354,6 +370,7 @@
       <p>내 마인크래프트 계정으로 서버 채팅을 보고, 보내세요.</p>
       <div class="hero-buttons">
         <a class="btn-download" id="downloadBtn" href="https://github.com/rdyjun/mc-chat-viewer/releases/latest/download/MinePortal-win.zip">⬇ 다운로드</a>
+        <script>applyDownloadAvailability(document.getElementById("downloadBtn"));</script>
         <button type="button" class="btn-try" id="tryWebBtn">🌐 웹에서 체험하기</button>
       </div>
       <div class="hero-note" id="desktopStatusNote">데스크톱 프로그램은 내 PC에서 직접 접속해 IP 제한이 있는 서버에서도 안정적으로 동작해요.</div>
@@ -534,20 +551,6 @@
     const gateDownloadBtn = document.getElementById("gateDownloadBtn");
     const playGateBackdrop = document.getElementById("playGateBackdrop");
     const gateCloseBtn = document.getElementById("gateCloseBtn");
-
-    // The desktop client only ships a Windows build right now. Label the download
-    // button accordingly, or mark it as not-yet-available on other platforms.
-    const IS_WINDOWS = /Win/i.test(navigator.platform || navigator.userAgent || "");
-    function applyDownloadAvailability(el) {
-      if (IS_WINDOWS) {
-        el.textContent = "⬇ Download for Windows";
-      } else {
-        el.textContent = "🚧 다른 OS는 준비 중이에요";
-        el.classList.add("btn-disabled");
-      }
-    }
-    applyDownloadAvailability(downloadBtn);
-    applyDownloadAvailability(gateDownloadBtn);
 
     // Probes the desktop client's loopback-only status server. Resolves to its
     // /status payload when the client is running locally, or null otherwise.
