@@ -104,6 +104,7 @@
     box-shadow: 0 6px 18px rgba(0,0,0,0.3);
   }
   .top-servers .rank-num { font-weight: bold; font-size: 1rem; color: var(--accent); width: 1.4rem; text-align: center; }
+  .top-servers .rank-info { display: flex; flex-direction: column; gap: 0.25rem; }
   .top-servers .rank-meta { font-size: 0.88rem; }
   .top-servers .rank-count { margin-left: auto; font-size: 0.78rem; color: #9ad; white-space: nowrap; }
   .top-servers .rank-goto { margin-left: auto; padding: 0.45rem 0.8rem; font-size: 0.78rem; }
@@ -171,6 +172,8 @@
   button:hover { filter: brightness(1.08); }
   button:disabled { background: #4a4a52; color: #999; cursor: not-allowed; filter: none; }
   #addServerForm { display: flex; flex-direction: column; gap: 0.6rem; }
+  .slot-picker-list { display: flex; flex-direction: column; gap: 0.5rem; }
+  .slot-pick-btn { width: 100%; text-align: left; font-weight: normal; }
   .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
   .panel-header h2 { margin: 0; }
   .add-server-btn { padding: 0.4rem 0.75rem; font-size: 0.78rem; }
@@ -183,6 +186,7 @@
   .server-row { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
   .server-meta { cursor: pointer; }
   .server-status { color: #9ad; font-size: 0.75rem; }
+  .server-ping { margin-top: 0.25rem; }
   #chatPanel { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
   .layout-switcher { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
   .layout-switcher button { background: rgba(255,255,255,0.06); color: #ccc; padding: 0.5rem 0.75rem; display: flex; align-items: center; border: 1px solid var(--glass-border); }
@@ -229,6 +233,8 @@
   .slot-log { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.28); border-radius: 8px; padding: 0.6rem 0.8rem; min-height: 0; }
   .slot-chat-form { display: flex; gap: 0.5rem; }
   .line { padding: 0.2rem 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.9rem; word-break: break-word; }
+  .line.line-system { color: #9a9aa8; font-style: italic; font-size: 0.82rem; }
+  .sys-tag { font-style: normal; color: var(--accent); margin-right: 0.35rem; }
   .time { color: #888; font-size: 0.8rem; margin-right: 0.5rem; }
   .trial-warning {
     display: none; align-items: center; gap: 0.5rem; border-radius: 10px; padding: 0.85rem 1.1rem; font-size: 0.82rem; margin-bottom: 1.25rem;
@@ -303,6 +309,14 @@
         <input name="version" placeholder="버전 (예: 26.1.2 또는 775)" required />
         <button type="submit">추가</button>
       </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="slotPickerBackdrop">
+    <div class="modal">
+      <button type="button" class="modal-close" id="slotPickerClose">✕</button>
+      <h2>어느 창에 띄울까요?</h2>
+      <div class="slot-picker-list" id="slotPickerList"></div>
     </div>
   </div>
 
@@ -421,6 +435,9 @@
     const loginModalClose = document.getElementById("loginModalClose");
     const addServerModalBackdrop = document.getElementById("addServerModalBackdrop");
     const addServerModalClose = document.getElementById("addServerModalClose");
+    const slotPickerBackdrop = document.getElementById("slotPickerBackdrop");
+    const slotPickerClose = document.getElementById("slotPickerClose");
+    const slotPickerList = document.getElementById("slotPickerList");
 
     function openAddServerModal() {
       addServerModalBackdrop.classList.add("open");
@@ -435,6 +452,41 @@
     addServerModalClose.addEventListener("click", closeAddServerModal);
     addServerModalBackdrop.addEventListener("click", (e) => {
       if (e.target === addServerModalBackdrop) closeAddServerModal();
+    });
+
+    // Lets 연결 pick which open chat window a server lands in, instead of always
+    // guessing "first empty slot" — only meaningful once there's more than one slot.
+    let slotPickerTargetId = null;
+
+    function openSlotPicker(id) {
+      slotPickerTargetId = id;
+      slotPickerList.innerHTML = slots.map((slot, i) => {
+        const current = slot.serverId ? servers.find((s) => s.id === slot.serverId) : null;
+        const label = current
+          ? (i + 1) + "번 창 (" + escapeHtml(current.host + ':' + current.port) + " 교체)"
+          : (i + 1) + "번 창 (비어있음)";
+        return '<button type="button" class="slot-pick-btn" data-i="' + i + '">' + label + '</button>';
+      }).join("");
+      slotPickerList.querySelectorAll(".slot-pick-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const i = Number(btn.dataset.i);
+          slots[i].serverId = slotPickerTargetId;
+          closeSlotPicker();
+          renderServers();
+          loadSlotDetail(i);
+        });
+      });
+      slotPickerBackdrop.classList.add("open");
+    }
+
+    function closeSlotPicker() {
+      slotPickerBackdrop.classList.remove("open");
+      slotPickerTargetId = null;
+    }
+
+    slotPickerClose.addEventListener("click", closeSlotPicker);
+    slotPickerBackdrop.addEventListener("click", (e) => {
+      if (e.target === slotPickerBackdrop) closeSlotPicker();
     });
 
     function openLoginModal(reason) {
@@ -635,8 +687,10 @@
       if (!recent.length) return;
       recentServersEl.innerHTML = recent.map((s) =>
         '<div class="rank-row" data-id="' + s.id + '">' +
+        '<div class="rank-info">' +
         '<span class="rank-meta">' + escapeHtml(s.host) + ':' + s.port + '</span>' +
         pingBadgeHtml(s.host, s.port) +
+        '</div>' +
         '<button type="button" class="rank-goto">Play로 이동</button>' +
         '</div>'
       ).join("");
@@ -690,9 +744,9 @@
         li.innerHTML =
           '<div class="server-row">' +
           '<span class="server-meta">' + escapeHtml(s.host) + ':' + s.port + '</span>' +
-          pingBadgeHtml(s.host, s.port) +
           '<button ' + (canConnect ? "" : "disabled") + '>' + label + '</button>' +
           '</div>' +
+          '<div class="server-ping">' + pingBadgeHtml(s.host, s.port) + '</div>' +
           '<div class="server-status">' + escapeHtml(s.status) + '</div>';
 
         li.querySelector(".server-meta").onclick = () => assignServerToSlot(s.id);
@@ -872,7 +926,11 @@
       const detail = await res.json();
       ref.statusEl.textContent = detail.host + ":" + detail.port + " — " + detail.status;
       ref.logEl.innerHTML = "";
-      detail.messages.forEach((m) => addLineTo(ref.logEl, m.message, m.timestamp));
+      const history = detail.statusHistory.map((h) => ({ timestamp: h.timestamp, text: h.status, system: true }));
+      const chat = detail.messages.map((m) => ({ timestamp: m.timestamp, text: m.message, system: false }));
+      history.concat(chat)
+        .sort((a, b) => a.timestamp - b.timestamp)
+        .forEach((line) => addLineTo(ref.logEl, line.text, line.timestamp, line.system));
     }
 
     function updateSlotsForServer(serverId, payload) {
@@ -884,8 +942,9 @@
           const s = servers.find((x) => x.id === serverId);
           ref.statusEl.textContent = (s ? s.host + ":" + s.port : "") + " — " + payload.status;
           updateSlotConnectBtn(i);
+          if (payload.logged) addLineTo(ref.logEl, payload.status, payload.timestamp, true);
         } else if (payload.type === "chat") {
-          addLineTo(ref.logEl, payload.message.message, payload.message.timestamp);
+          addLineTo(ref.logEl, payload.message.message, payload.message.timestamp, false);
         }
       });
     }
@@ -935,14 +994,19 @@
         }
         return;
       }
-      assignServerToSlot(id);
+      if (slots.length > 1) {
+        openSlotPicker(id);
+      } else {
+        assignServerToSlot(id);
+      }
     }
 
-    function addLineTo(container, text, time) {
+    function addLineTo(container, text, time, system) {
       const div = document.createElement("div");
-      div.className = "line";
+      div.className = system ? "line line-system" : "line";
       const t = new Date(time).toLocaleTimeString();
-      div.innerHTML = '<span class="time">' + t + '</span>' + escapeHtml(text);
+      div.innerHTML = '<span class="time">' + t + '</span>' +
+        (system ? '<b class="sys-tag">마인포탈</b> ' : '') + escapeHtml(text);
       container.appendChild(div);
       container.scrollTop = container.scrollHeight;
     }
