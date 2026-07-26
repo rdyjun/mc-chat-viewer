@@ -8,22 +8,23 @@
   :root {
     --accent: #9b5de5; --accent-text: #fff;
     --glass-bg: rgba(255,255,255,0.04); --glass-bg-strong: rgba(255,255,255,0.07);
-    --glass-border: rgba(255,255,255,0.32); --glass-shadow: 0 8px 32px rgba(0,0,0,0.38);
+    --glass-border: rgba(255,255,255,0.32); --glass-shadow: 0 14px 40px rgba(0,0,0,0.5);
   }
   * { box-sizing: border-box; }
+  html, body { height: 100%; }
   body {
     font-family: system-ui, sans-serif; color: #f0f0f3; margin: 0; padding: 1.5rem;
-    min-height: 100vh;
     background: #16161c;
     background-attachment: fixed;
+    display: flex; flex-direction: column;
   }
   h1 { font-size: 1.1rem; margin-bottom: 1rem; }
   h2 { font-size: 0.95rem; color: #d8d8e0; margin: 0 0 0.5rem; }
   header.appHeader {
-    display: flex; align-items: center; gap: 1.5rem; margin-bottom: 1.25rem;
+    display: flex; align-items: center; gap: 1.5rem; margin-bottom: 1.25rem; flex-shrink: 0;
     background: var(--glass-bg); backdrop-filter: blur(22px) saturate(160%); -webkit-backdrop-filter: blur(22px) saturate(160%);
-    border: 1px solid var(--glass-border); border-radius: 14px; padding: 0.6rem 1rem;
-    box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,0.08);
+    border-radius: 14px; padding: 0.6rem 1rem;
+    box-shadow: var(--glass-shadow);
   }
   .logo-wrap { height: 2.3rem; overflow: hidden; display: flex; align-items: center; cursor: pointer; }
   .logo-wrap img { height: 9rem; width: auto; object-fit: cover; object-position: center; }
@@ -75,11 +76,11 @@
     font-weight: bold; text-decoration: none;
   }
   .view { display: none; }
-  .view.active { display: block; }
+  .view.active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
   .hero {
     padding: 2.5rem 1rem 3rem; text-align: center; border-radius: 18px; margin-bottom: 1rem;
     background: var(--glass-bg); backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%);
-    border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,0.08);
+    box-shadow: var(--glass-shadow);
   }
   .hero h1 { font-size: 1.6rem; margin-bottom: 0.6rem; }
   .hero p { color: #b9b9c4; font-size: 0.95rem; margin-bottom: 1.6rem; }
@@ -87,6 +88,7 @@
   .hero-buttons a, .hero-buttons button { padding: 0.7rem 1.4rem; font-size: 0.95rem; border-radius: 10px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; transition: transform 0.15s, filter 0.15s; }
   .hero-buttons a:hover, .hero-buttons button:hover { transform: translateY(-1px); filter: brightness(1.08); }
   .btn-download { background: var(--accent); color: var(--accent-text); box-shadow: 0 6px 18px rgba(155,93,229,0.3); }
+  .btn-download.btn-disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; box-shadow: none; }
   .btn-try {
     background: var(--glass-bg-strong); color: #eee; border: 1px solid var(--glass-border);
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
@@ -97,8 +99,9 @@
   .top-servers { display: flex; flex-direction: column; gap: 0.5rem; }
   .top-servers .rank-row {
     display: flex; align-items: center; gap: 0.75rem; border-radius: 10px; padding: 0.55rem 0.8rem;
-    background: var(--glass-bg); border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
     backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.3);
   }
   .top-servers .rank-num { font-weight: bold; font-size: 1rem; color: var(--accent); width: 1.4rem; text-align: center; }
   .top-servers .rank-meta { font-size: 0.88rem; }
@@ -111,9 +114,9 @@
   .server-grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.75rem; }
   .server-grid-view .server-card {
     border-radius: 12px; padding: 0.8rem; display: flex; flex-direction: column; gap: 0.5rem;
-    background: var(--glass-bg); border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
     backdrop-filter: blur(16px) saturate(150%); -webkit-backdrop-filter: blur(16px) saturate(150%);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
     transition: transform 0.15s, background 0.15s;
   }
   .server-grid-view .server-card:hover { transform: translateY(-2px); background: var(--glass-bg-strong); }
@@ -127,12 +130,18 @@
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   }
   .explore-links a.button-link:hover { background: rgba(255,255,255,0.16); }
-  .layout { display: flex; gap: 1.5rem; align-items: flex-start; }
+  .layout { display: flex; gap: 1.5rem; align-items: stretch; flex: 1; min-height: 0; }
+  .mode-toggle { display: flex; gap: 0.4rem; margin-bottom: 0.75rem; flex-shrink: 0; }
+  .mode-toggle-btn {
+    flex: 1; text-align: center; background: var(--glass-bg-strong); color: #ccc;
+    border: 1px solid var(--glass-border); padding: 0.5rem; font-size: 0.85rem; border-radius: 8px;
+  }
+  .mode-toggle-btn.active { background: var(--accent); color: var(--accent-text); }
   .panel {
     border-radius: 14px; padding: 1rem;
-    background: var(--glass-bg); border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
     backdrop-filter: blur(22px) saturate(160%); -webkit-backdrop-filter: blur(22px) saturate(160%);
-    box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,0.07);
+    box-shadow: var(--glass-shadow);
   }
   .sidebar { width: 280px; display: flex; flex-direction: column; gap: 1rem; }
   input {
@@ -159,7 +168,7 @@
   .server-row { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
   .server-meta { cursor: pointer; }
   .server-status { color: #9ad; font-size: 0.75rem; }
-  #chatPanel { flex: 1; min-width: 0; }
+  #chatPanel { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
   .layout-switcher { display: flex; gap: 0.4rem; margin-bottom: 0.75rem; }
   .layout-switcher button { background: rgba(255,255,255,0.06); color: #ccc; padding: 0.4rem 0.6rem; display: flex; align-items: center; border: 1px solid var(--glass-border); }
   .layout-switcher button.active { background: var(--accent); color: var(--accent-text); }
@@ -168,14 +177,15 @@
   .layout-icon.n1 { grid-template-columns: 1fr; grid-template-rows: 1fr; }
   .layout-icon.n2 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
   .layout-icon.n4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
-  .chat-grid { display: grid; gap: 0.75rem; }
+  .chat-grid { display: grid; gap: 0.75rem; flex: 1; min-height: 0; grid-auto-rows: 1fr; }
   .chat-grid[data-layout="1"] { grid-template-columns: 1fr; }
   .chat-grid[data-layout="2"] { grid-template-columns: 1fr 1fr; }
   .chat-grid[data-layout="4"] { grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; }
   .chat-slot {
-    border-radius: 12px; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; min-width: 0;
-    background: rgba(0,0,0,0.22); border: 1px solid var(--glass-border);
+    border-radius: 12px; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; min-height: 0;
+    background: rgba(0,0,0,0.22);
     backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 10px 28px rgba(0,0,0,0.4);
   }
   .slot-header { display: flex; gap: 0.5rem; align-items: center; }
   .slot-server-picker { position: relative; flex: 1; min-width: 0; }
@@ -200,7 +210,7 @@
   .slot-server-menu .item.selected { background: rgba(155,93,229,0.18); color: var(--accent); font-weight: bold; }
   .slot-server-menu .empty { padding: 0.55rem 0.7rem; font-size: 0.8rem; color: #888; }
   .slot-status { font-size: 0.78rem; color: #9ad; white-space: nowrap; }
-  .slot-log { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.28); border-radius: 8px; padding: 0.4rem 0.6rem; min-height: 10rem; max-height: 45vh; }
+  .slot-log { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.28); border-radius: 8px; padding: 0.4rem 0.6rem; min-height: 0; }
   .slot-chat-form { display: flex; gap: 0.5rem; }
   .line { padding: 0.2rem 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.9rem; word-break: break-word; }
   .time { color: #888; font-size: 0.8rem; margin-right: 0.5rem; }
@@ -240,7 +250,6 @@
       <button type="button" id="tabHomeBtn" class="active" style="display:none">홈</button>
       <button type="button" id="tabListBtn">플레이</button>
       <button type="button" id="tabServersBtn">서버 목록</button>
-      <button type="button" id="tryWebHeaderBtn">체험하기</button>
     </nav>
     <div class="accountArea">
       <span id="accountStatus">확인 중...</span>
@@ -299,7 +308,11 @@
   </div>
 
   <div class="view" id="listView">
-    <div class="trial-warning" id="trialWarning">⚠ 지금은 <b>웹 체험 모드</b>예요. 이 방식은 서버가 대신 접속을 대리해주는 방식이라, 공인/실서버에 접속하면 "동일 IP 다중 접속" 등으로 인식되어 <b>밴(차단)</b>될 수 있어요. 실제 플레이는 상단 <b>플레이</b> 탭이나 데스크톱 클라이언트 사용을 권장합니다.</div>
+    <div class="mode-toggle" id="modeToggle">
+      <button type="button" class="mode-toggle-btn active" data-mode="real" id="modeRealBtn">정식 모드</button>
+      <button type="button" class="mode-toggle-btn" data-mode="trial" id="modeTrialBtn">체험모드</button>
+    </div>
+    <div class="trial-warning" id="trialWarning">⚠ 지금은 <b>웹 체험 모드</b>예요. 이 방식은 서버가 대신 접속을 대리해주는 방식이라, 공인/실서버에 접속하면 "동일 IP 다중 접속" 등으로 인식되어 <b>밴(차단)</b>될 수 있어요. 데스크톱 클라이언트를 사용하면 이 문제 없이 <b>정식 모드</b>로 플레이할 수 있어요.</div>
     <div class="layout">
       <div class="sidebar">
         <div class="panel">
@@ -360,8 +373,9 @@
     const recentServersPanel = document.getElementById("recentServersPanel");
     const recentServersEl = document.getElementById("recentServers");
     const tryWebBtn = document.getElementById("tryWebBtn");
-    const tryWebHeaderBtn = document.getElementById("tryWebHeaderBtn");
     const trialWarning = document.getElementById("trialWarning");
+    const modeRealBtn = document.getElementById("modeRealBtn");
+    const modeTrialBtn = document.getElementById("modeTrialBtn");
     const loginTriggerBtn = document.getElementById("loginTriggerBtn");
     const loginModalBackdrop = document.getElementById("loginModalBackdrop");
     const loginModalReason = document.getElementById("loginModalReason");
@@ -410,8 +424,23 @@
     const DESKTOP_CLIENT_PORT = 47893;
     const desktopStatusNote = document.getElementById("desktopStatusNote");
     const downloadBtn = document.getElementById("downloadBtn");
+    const gateDownloadBtn = document.getElementById("gateDownloadBtn");
     const playGateBackdrop = document.getElementById("playGateBackdrop");
     const gateHomeBtn = document.getElementById("gateHomeBtn");
+
+    // The desktop client only ships a Windows build right now. Label the download
+    // button accordingly, or mark it as not-yet-available on other platforms.
+    const IS_WINDOWS = /Win/i.test(navigator.platform || navigator.userAgent || "");
+    function applyDownloadAvailability(el) {
+      if (IS_WINDOWS) {
+        el.textContent = "⬇ Download for Windows";
+      } else {
+        el.textContent = "🚧 다른 OS는 준비 중이에요";
+        el.classList.add("btn-disabled");
+      }
+    }
+    applyDownloadAvailability(downloadBtn);
+    applyDownloadAvailability(gateDownloadBtn);
 
     // Probes the desktop client's loopback-only status server. Resolves to its
     // /status payload when the client is running locally, or null otherwise.
@@ -461,31 +490,42 @@
     let layout = 1;
     let slots = [{ serverId: null }]; // one entry per visible chat-grid slot
     let slotRefs = []; // DOM refs parallel to `slots`, rebuilt whenever the layout changes
+    let desktopAvailable = false;
 
-    function showTab(tab, opts) {
-      const trial = !!(opts && opts.trial);
+    function showTab(tab) {
       homeView.classList.toggle("active", tab === "home");
       listView.classList.toggle("active", tab === "list");
       serversView.classList.toggle("active", tab === "servers");
       tabHomeBtn.classList.toggle("active", tab === "home");
       tabListBtn.classList.toggle("active", tab === "list");
       tabServersBtn.classList.toggle("active", tab === "servers");
-      if (tab === "list") trialWarning.classList.toggle("show", trial);
+    }
+
+    // Switches the Play tab between "정식 모드" (via the desktop client) and
+    // "체험모드" (web relay, with the ban-risk warning). Picking 정식 모드 without
+    // the desktop client running opens the download gate instead of switching.
+    function setPlayMode(mode) {
+      if (mode === "real" && !desktopAvailable) {
+        openPlayGate();
+        return;
+      }
+      modeRealBtn.classList.toggle("active", mode === "real");
+      modeTrialBtn.classList.toggle("active", mode === "trial");
+      trialWarning.classList.toggle("show", mode === "trial");
+    }
+
+    async function enterPlayTab(forcedMode) {
+      showTab("list");
+      desktopAvailable = !!(await probeDesktopClient());
+      setPlayMode(forcedMode || (desktopAvailable ? "real" : "trial"));
     }
 
     tabHomeBtn.addEventListener("click", () => { showTab("home"); loadRecentServers(); });
     logoBtn.addEventListener("click", () => { showTab("home"); loadRecentServers(); });
-    tabListBtn.addEventListener("click", async () => {
-      const desktop = await probeDesktopClient();
-      if (!desktop) {
-        openPlayGate();
-        return;
-      }
-      closePlayGate();
-      showTab("list");
-    });
-    tryWebBtn.addEventListener("click", () => showTab("list", { trial: true }));
-    tryWebHeaderBtn.addEventListener("click", () => showTab("list", { trial: true }));
+    tabListBtn.addEventListener("click", () => enterPlayTab());
+    tryWebBtn.addEventListener("click", () => enterPlayTab("trial"));
+    modeRealBtn.addEventListener("click", () => setPlayMode("real"));
+    modeTrialBtn.addEventListener("click", () => setPlayMode("trial"));
     tabServersBtn.addEventListener("click", () => {
       if (account.status !== "logged-in") {
         openLoginModal("로그인 후 서버 목록을 이용할 수 있어요.");
