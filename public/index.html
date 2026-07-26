@@ -188,8 +188,10 @@
   .server-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .server-status { color: #9ad; font-size: 0.75rem; }
   .drag-handle {
-    flex-shrink: 0; width: 3px; height: 3px; border-radius: 50%; background: #888;
-    margin-left: 0.15rem;
+    flex-shrink: 0; width: 9px; height: 13px; margin-left: 0.15rem; position: relative;
+  }
+  .drag-handle::before {
+    content: ""; position: absolute; top: 0; left: 0; width: 3px; height: 3px; border-radius: 50%; background: #888;
     box-shadow:
       0 5px 0 #888, 0 10px 0 #888,
       6px 0 0 #888, 6px 5px 0 #888, 6px 10px 0 #888;
@@ -319,8 +321,7 @@
       <button type="button" class="modal-close" id="addServerModalClose">✕</button>
       <h2>서버 추가</h2>
       <form id="addServerForm">
-        <input name="host" placeholder="서버 주소" required />
-        <input name="port" placeholder="포트 (기본 25565)" />
+        <input name="host" placeholder="서버 주소 (예: mc.dongsoop.site:25565)" required />
         <input name="version" placeholder="버전 (예: 26.1.2 또는 775)" required />
         <button type="submit">추가</button>
       </form>

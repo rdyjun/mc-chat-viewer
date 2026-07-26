@@ -107,19 +107,33 @@ app.get("/api/servers", (req, res) => {
   res.json(uid ? listServers(uid).map(summarizeServer) : []);
 });
 
+// Users type one combined "host:port" (or bare host) field — split it into the two
+// values the rest of the app (DB columns, RawMcClient, ping) still stores/uses separately.
+function parseServerAddress(address: string): { host: string; port: number } {
+  const idx = address.lastIndexOf(":");
+  if (idx === -1) return { host: address, port: 25565 };
+  const host = address.slice(0, idx);
+  const port = Number(address.slice(idx + 1));
+  if (!host || !Number.isInteger(port) || port <= 0 || port > 65535) {
+    return { host: address, port: 25565 };
+  }
+  return { host, port };
+}
+
 app.post("/api/servers", (req, res) => {
   const uid = (req as any).uid as string | undefined;
   if (!uid) {
     res.status(409).json({ error: "Log in before adding a server", code: "not-logged-in" });
     return;
   }
-  const { host, port, version } = req.body ?? {};
+  const { host, version } = req.body ?? {};
   if (!host || !version) {
     res.status(400).json({ error: "host and version are required" });
     return;
   }
   try {
-    const server = addServer(String(host), Number(port) || 25565, String(version), uid);
+    const { host: parsedHost, port } = parseServerAddress(String(host).trim());
+    const server = addServer(parsedHost, port, String(version), uid);
     res.status(201).json(summarizeServer(server));
   } catch (err: any) {
     res.status(400).json({ error: err.message });
