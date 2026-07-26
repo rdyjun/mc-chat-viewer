@@ -130,20 +130,35 @@
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   }
   .explore-links a.button-link:hover { background: rgba(255,255,255,0.16); }
-  .layout { display: flex; gap: 1.75rem; align-items: stretch; flex: 1; min-height: 0; }
+  .layout { display: flex; gap: 0; align-items: stretch; flex: 1; min-height: 0; }
+  .layout-resizer {
+    width: 6px; flex-shrink: 0; margin: 0 0.9rem; cursor: col-resize; border-radius: 4px;
+    background: transparent; transition: background 0.15s;
+  }
+  .layout-resizer:hover, .layout-resizer.dragging { background: var(--accent); }
   .mode-toggle { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-shrink: 0; }
   .mode-toggle-btn {
     flex: 1; text-align: center; background: var(--glass-bg-strong); color: #ccc;
     border: 1px solid var(--glass-border); padding: 0.65rem; font-size: 0.85rem; border-radius: 8px;
   }
   .mode-toggle-btn.active { background: var(--accent); color: var(--accent-text); }
+  .mode-toggle-skeleton {
+    height: 2.6rem; border-radius: 8px; margin-bottom: 1rem; flex-shrink: 0;
+    background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.11) 50%, rgba(255,255,255,0.04) 75%);
+    background-size: 200% 100%;
+    animation: mode-skeleton-pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes mode-skeleton-pulse {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
   .panel {
     border-radius: 14px; padding: 1.35rem;
     background: var(--glass-bg);
     backdrop-filter: blur(22px) saturate(160%); -webkit-backdrop-filter: blur(22px) saturate(160%);
     box-shadow: var(--glass-shadow);
   }
-  .sidebar { width: 280px; display: flex; flex-direction: column; gap: 1.25rem; }
+  .sidebar { width: 280px; flex-shrink: 0; display: flex; flex-direction: column; gap: 1.25rem; }
   input {
     padding: 0.6rem 0.75rem; border-radius: 8px; border: 1px solid var(--glass-border);
     background: rgba(0,0,0,0.25); color: #eee; width: 100%;
@@ -188,6 +203,7 @@
     box-shadow: 0 10px 28px rgba(0,0,0,0.4);
   }
   .slot-header { display: flex; gap: 0.5rem; align-items: center; }
+  .slot-connect-btn { flex-shrink: 0; padding: 0.4rem 0.7rem; font-size: 0.78rem; }
   .slot-server-picker { position: relative; flex: 1; min-width: 0; }
   .slot-server-btn {
     width: 100%; text-align: left; background-color: rgba(255,255,255,0.06); color: #eee; border: 1px solid var(--glass-border); border-radius: 8px;
@@ -311,8 +327,9 @@
   </div>
 
   <div class="view" id="listView">
-    <div class="mode-toggle" id="modeToggle">
-      <button type="button" class="mode-toggle-btn active" data-mode="real" id="modeRealBtn">정식 모드</button>
+    <div class="mode-toggle-skeleton" id="modeToggleSkeleton"></div>
+    <div class="mode-toggle" id="modeToggle" style="display:none">
+      <button type="button" class="mode-toggle-btn" data-mode="real" id="modeRealBtn">정식 모드</button>
       <button type="button" class="mode-toggle-btn" data-mode="trial" id="modeTrialBtn">체험모드</button>
     </div>
     <div class="trial-warning" id="trialWarning">⚠ 지금은 <b>웹 체험 모드</b>예요. 이 방식은 서버가 대신 접속을 대리해주는 방식이라, 공인/실서버에 접속하면 "동일 IP 다중 접속" 등으로 인식되어 <b>밴(차단)</b>될 수 있어요. 데스크톱 클라이언트를 사용하면 이 문제 없이 <b>정식 모드</b>로 플레이할 수 있어요.</div>
@@ -335,6 +352,8 @@
           <ul id="serverList"></ul>
         </div>
       </div>
+
+      <div class="layout-resizer" id="layoutResizer"></div>
 
       <div class="panel" id="chatPanel">
         <div class="layout-switcher" id="layoutSwitcher">
@@ -363,6 +382,8 @@
     const serverListEl = document.getElementById("serverList");
     const layoutSwitcher = document.getElementById("layoutSwitcher");
     const chatGrid = document.getElementById("chatGrid");
+    const layoutResizer = document.getElementById("layoutResizer");
+    const sidebarEl = document.querySelector(".sidebar");
     const logoBtn = document.getElementById("logoBtn");
     const tabHomeBtn = document.getElementById("tabHomeBtn");
     const tabListBtn = document.getElementById("tabListBtn");
@@ -377,6 +398,8 @@
     const recentServersEl = document.getElementById("recentServers");
     const tryWebBtn = document.getElementById("tryWebBtn");
     const trialWarning = document.getElementById("trialWarning");
+    const modeToggle = document.getElementById("modeToggle");
+    const modeToggleSkeleton = document.getElementById("modeToggleSkeleton");
     const modeRealBtn = document.getElementById("modeRealBtn");
     const modeTrialBtn = document.getElementById("modeTrialBtn");
     const loginTriggerBtn = document.getElementById("loginTriggerBtn");
@@ -518,7 +541,12 @@
 
     async function enterPlayTab(forcedMode) {
       showTab("list");
+      modeToggle.style.display = "none";
+      trialWarning.classList.remove("show");
+      modeToggleSkeleton.style.display = "";
       desktopAvailable = !!(await probeDesktopClient());
+      modeToggleSkeleton.style.display = "none";
+      modeToggle.style.display = "";
       setPlayMode(forcedMode || (desktopAvailable ? "real" : "trial"));
     }
 
@@ -689,6 +717,7 @@
         div.innerHTML =
           '<div class="slot-header">' +
           '<div class="slot-server-picker"><button type="button" class="slot-server-btn">서버 선택</button><div class="slot-server-menu"></div></div>' +
+          '<button type="button" class="slot-connect-btn" disabled>연결</button>' +
           '<span class="slot-status"></span>' +
           '</div>' +
           '<div class="slot-log"></div>' +
@@ -697,6 +726,7 @@
 
         const btnEl = div.querySelector(".slot-server-btn");
         const menuEl = div.querySelector(".slot-server-menu");
+        const connectBtnEl = div.querySelector(".slot-connect-btn");
         const statusEl = div.querySelector(".slot-status");
         const logEl = div.querySelector(".slot-log");
         const formEl = div.querySelector("form");
@@ -709,11 +739,18 @@
           if (!isOpen) menuEl.classList.add("open");
         });
 
+        connectBtnEl.addEventListener("click", () => connectServerInSlot(i));
+
         formEl.addEventListener("submit", async (e) => {
           e.preventDefault();
           const serverId = slots[i].serverId;
           if (!serverId) {
             alert("먼저 이 칸에 서버를 선택하세요.");
+            return;
+          }
+          const server = servers.find((s) => s.id === serverId);
+          if (!server || !server.connected) {
+            alert("먼저 연결 버튼을 눌러 서버에 연결하세요.");
             return;
           }
           const message = inputEl.value.trim();
@@ -731,10 +768,45 @@
           inputEl.value = "";
         });
 
-        return { btnEl, menuEl, statusEl, logEl, formEl, inputEl };
+        return { btnEl, menuEl, connectBtnEl, statusEl, logEl, formEl, inputEl };
       });
       refreshSlotMenus();
       slots.forEach((_, i) => loadSlotDetail(i));
+    }
+
+    // Reflects a slot's server connection state onto its 연결 button — mirrors the
+    // same 연결/연결중/연결됨 labeling used by the sidebar list and server grid.
+    function updateSlotConnectBtn(i) {
+      const ref = slotRefs[i];
+      if (!ref) return;
+      const serverId = slots[i] && slots[i].serverId;
+      const s = serverId && servers.find((x) => x.id === serverId);
+      if (!s) {
+        ref.connectBtnEl.textContent = "연결";
+        ref.connectBtnEl.disabled = true;
+        return;
+      }
+      const canConnect = s.phase !== "active";
+      ref.connectBtnEl.textContent = canConnect ? "연결" : (s.connected ? "연결됨" : "연결중");
+      ref.connectBtnEl.disabled = !canConnect;
+    }
+
+    async function connectServerInSlot(i) {
+      const serverId = slots[i] && slots[i].serverId;
+      if (!serverId) return;
+      const res = await fetch("/api/servers/" + serverId + "/connect", { method: "POST" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: res.statusText }));
+        if (body.code === "not-logged-in") {
+          alert("먼저 로그인 해주세요.");
+          openLoginModal();
+        } else {
+          alert("연결 실패: " + body.error);
+        }
+        return;
+      }
+      renderServers();
+      loadSlotDetail(i);
     }
 
     function closeAllSlotMenus() {
@@ -753,6 +825,7 @@
         const current = slots[i].serverId;
         const currentServer = servers.find((s) => s.id === current);
         ref.btnEl.textContent = currentServer ? currentServer.host + ':' + currentServer.port : "서버 선택";
+        updateSlotConnectBtn(i);
         ref.menuEl.innerHTML = servers.length
           ? servers.map((s) =>
               '<div class="item' + (s.id === current ? ' selected' : '') + '" data-id="' + s.id + '">' +
@@ -795,6 +868,7 @@
         if (payload.type === "status") {
           const s = servers.find((x) => x.id === serverId);
           ref.statusEl.textContent = (s ? s.host + ":" + s.port : "") + " — " + payload.status;
+          updateSlotConnectBtn(i);
         } else if (payload.type === "chat") {
           addLineTo(ref.logEl, payload.message.message, payload.message.timestamp);
         }
@@ -805,6 +879,33 @@
       const btn = e.target.closest("button[data-n]");
       if (!btn) return;
       setLayout(Number(btn.dataset.n));
+    });
+
+    // Drag-to-resize the sidebar/chat split. Width is clamped and remembered across visits.
+    const SIDEBAR_MIN_WIDTH = 200;
+    const SIDEBAR_MAX_WIDTH = 480;
+    const savedSidebarWidth = parseInt(localStorage.getItem("sidebarWidth"), 10);
+    if (savedSidebarWidth) sidebarEl.style.width = savedSidebarWidth + "px";
+
+    let resizingSidebar = false;
+    layoutResizer.addEventListener("mousedown", (e) => {
+      resizingSidebar = true;
+      layoutResizer.classList.add("dragging");
+      document.body.style.userSelect = "none";
+      e.preventDefault();
+    });
+    window.addEventListener("mousemove", (e) => {
+      if (!resizingSidebar) return;
+      const rect = sidebarEl.getBoundingClientRect();
+      const width = Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, e.clientX - rect.left));
+      sidebarEl.style.width = width + "px";
+    });
+    window.addEventListener("mouseup", () => {
+      if (!resizingSidebar) return;
+      resizingSidebar = false;
+      layoutResizer.classList.remove("dragging");
+      document.body.style.userSelect = "";
+      localStorage.setItem("sidebarWidth", parseInt(sidebarEl.style.width, 10));
     });
 
     async function connectServer(id) {
