@@ -260,6 +260,14 @@
   .gate-modal p { color: #c6c6d0; font-size: 0.88rem; line-height: 1.5; margin: 0 0 1.4rem; }
   .gate-buttons { display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap; }
   .gate-buttons a, .gate-buttons button { padding: 0.75rem 1.4rem; font-size: 0.88rem; border-radius: 10px; text-decoration: none; }
+
+  .appFooter {
+    display: flex; justify-content: center; align-items: center; gap: 1rem;
+    margin-top: 1.5rem; padding-top: 1.25rem; flex-shrink: 0;
+    font-size: 0.78rem; color: #777;
+  }
+  .appFooter a { color: #999; text-decoration: none; }
+  .appFooter a:hover { color: #ddd; }
 </style>
 </head>
 <body>
@@ -375,6 +383,11 @@
       <div class="server-grid-view" id="serverGridView"></div>
     </div>
   </div>
+
+  <footer class="appFooter">
+    <span>© 2026 마인포탈</span>
+    <a href="https://github.com/rdyjun/mc-chat-viewer" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </footer>
 
   <script>
     const accountStatusEl = document.getElementById("accountStatus");
