@@ -179,14 +179,21 @@
   .add-server-btn { padding: 0.4rem 0.75rem; font-size: 0.78rem; }
   #serverList { list-style: none; padding: 0; margin: 0.75rem 0 0; display: flex; flex-direction: column; gap: 0.5rem; }
   #serverList li {
-    padding: 0.7rem; border-radius: 10px; font-size: 0.85rem;
+    padding: 0.7rem; border-radius: 10px; font-size: 0.85rem; cursor: grab;
     background: rgba(255,255,255,0.05); border: 1px solid transparent;
   }
   #serverList li.selected { border-color: var(--accent); background: rgba(155,93,229,0.14); }
-  .server-row { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
-  .server-meta { cursor: pointer; }
+  .server-row { display: flex; align-items: center; gap: 0.6rem; }
+  .server-meta { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .server-status { color: #9ad; font-size: 0.75rem; }
   .server-ping { margin-top: 0.25rem; }
+  .drag-handle {
+    flex-shrink: 0; width: 3px; height: 3px; border-radius: 50%; background: #888;
+    margin-left: 0.15rem;
+    box-shadow:
+      0 5px 0 #888, 0 10px 0 #888,
+      6px 0 0 #888, 6px 5px 0 #888, 6px 10px 0 #888;
+  }
   #chatPanel { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
   .layout-switcher { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
   .layout-switcher button { background: rgba(255,255,255,0.06); color: #ccc; padding: 0.5rem 0.75rem; display: flex; align-items: center; border: 1px solid var(--glass-border); }
@@ -205,6 +212,14 @@
     background: rgba(0,0,0,0.22);
     backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
     box-shadow: 0 10px 28px rgba(0,0,0,0.4);
+  }
+  .chat-slot.drag-hint {
+    outline: 2px dashed var(--accent); outline-offset: -2px;
+    animation: chat-slot-drop-hint 0.8s ease-in-out infinite;
+  }
+  @keyframes chat-slot-drop-hint {
+    0%, 100% { background: rgba(0,0,0,0.22); }
+    50% { background: rgba(155,93,229,0.22); }
   }
   .slot-header { display: flex; gap: 0.5rem; align-items: center; }
   .slot-connect-btn { flex-shrink: 0; padding: 0.4rem 0.7rem; font-size: 0.78rem; }
@@ -739,19 +754,19 @@
       servers.forEach((s) => {
         const li = document.createElement("li");
         li.className = slots.some((slot) => slot.serverId === s.id) ? "selected" : "";
-        const canConnect = s.phase !== "active";
-        const label = canConnect ? "연결" : (s.connected ? "연결됨" : "연결중");
+        li.draggable = true;
         li.innerHTML =
           '<div class="server-row">' +
+          '<span class="drag-handle" aria-hidden="true"></span>' +
           '<span class="server-meta">' + escapeHtml(s.host) + ':' + s.port + '</span>' +
-          '<button ' + (canConnect ? "" : "disabled") + '>' + label + '</button>' +
           '</div>' +
           '<div class="server-ping">' + pingBadgeHtml(s.host, s.port) + '</div>' +
           '<div class="server-status">' + escapeHtml(s.status) + '</div>';
 
-        li.querySelector(".server-meta").onclick = () => assignServerToSlot(s.id);
-        const btn = li.querySelector("button");
-        btn.onclick = () => connectServer(s.id);
+        li.addEventListener("dragstart", (e) => {
+          e.dataTransfer.setData("text/plain", s.id);
+          e.dataTransfer.effectAllowed = "move";
+        });
         serverListEl.appendChild(li);
       });
       refreshSlotMenus();
@@ -809,6 +824,27 @@
         });
 
         connectBtnEl.addEventListener("click", () => connectServerInSlot(i));
+
+        // Drop target for dragging a server card here from the sidebar — a dashed
+        // pulsing outline hints "drop to show here"; dropping only changes the
+        // selection, it never connects (connecting stays the slot's own 연결 button).
+        div.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          div.classList.add("drag-hint");
+        });
+        div.addEventListener("dragleave", () => {
+          div.classList.remove("drag-hint");
+        });
+        div.addEventListener("drop", (e) => {
+          e.preventDefault();
+          div.classList.remove("drag-hint");
+          const id = e.dataTransfer.getData("text/plain");
+          if (!id) return;
+          closeAllSlotMenus();
+          slots[i].serverId = id;
+          renderServers();
+          loadSlotDetail(i);
+        });
 
         formEl.addEventListener("submit", async (e) => {
           e.preventDefault();
