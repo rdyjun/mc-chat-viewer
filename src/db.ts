@@ -63,6 +63,18 @@ export function listServerRowsForUser(userId: string): ServerRow[] {
     .all(userId) as ServerRow[];
 }
 
+/** Case-insensitive host match within one user's own server list — used to reject duplicate adds. */
+export function findUserServerByAddress(userId: string, host: string, port: number): ServerRow | undefined {
+  return db
+    .prepare(
+      `SELECT s.id, s.host, s.port, s.version
+       FROM servers s
+       JOIN user_servers us ON us.server_id = s.id
+       WHERE us.user_id = ? AND LOWER(s.host) = LOWER(?) AND s.port = ?`
+    )
+    .get(userId, host, port) as ServerRow | undefined;
+}
+
 export function listAllServerRows(): ServerRow[] {
   return db.prepare("SELECT id, host, port, version FROM servers").all() as ServerRow[];
 }

@@ -677,6 +677,7 @@
         li.innerHTML =
           '<div class="server-row">' +
           '<span class="server-meta">' + escapeHtml(s.host) + ':' + s.port + '</span>' +
+          pingBadgeHtml(s.host, s.port) +
           '<button ' + (canConnect ? "" : "disabled") + '>' + label + '</button>' +
           '</div>' +
           '<div class="server-status">' + escapeHtml(s.status) + '</div>';
@@ -687,6 +688,7 @@
         serverListEl.appendChild(li);
       });
       refreshSlotMenus();
+      refreshPingBadges(serverListEl);
       renderServerGridView();
     }
 

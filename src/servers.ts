@@ -8,6 +8,7 @@ import {
   listAllServerRows,
   listServerRowsForUser,
   isServerOwnedByUser,
+  findUserServerByAddress,
   logConnection,
 } from "./db";
 
@@ -90,9 +91,16 @@ function setStatus(server: ServerConfig, status: string) {
   });
 }
 
+export class DuplicateServerError extends Error {
+  constructor() {
+    super("이미 등록된 서버 주소예요");
+  }
+}
+
 /** Adds a server to the saved list, owned by `userId`. Does not connect — call connectServer() for that. */
 export function addServer(host: string, port: number, version: string, userId: string): ServerConfig {
   resolveProtocolVersion(version); // validate early so a bad version fails at add-time, not connect-time
+  if (findUserServerByAddress(userId, host, port)) throw new DuplicateServerError();
   const id = randomUUID();
   insertServerRow(id, host, port, version);
   linkUserServer(userId, id);
