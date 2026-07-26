@@ -960,7 +960,7 @@
       const res = await fetch("/api/servers/" + serverId);
       if (!res.ok) return;
       const detail = await res.json();
-      ref.statusEl.textContent = detail.host + ":" + detail.port + " — " + detail.status;
+      ref.statusEl.textContent = detail.status;
       ref.logEl.innerHTML = "";
       const history = detail.statusHistory.map((h) => ({ timestamp: h.timestamp, text: h.status, system: true }));
       const chat = detail.messages.map((m) => ({ timestamp: m.timestamp, text: m.message, system: false }));
@@ -975,8 +975,7 @@
         const ref = slotRefs[i];
         if (!ref) return;
         if (payload.type === "status") {
-          const s = servers.find((x) => x.id === serverId);
-          ref.statusEl.textContent = (s ? s.host + ":" + s.port : "") + " — " + payload.status;
+          ref.statusEl.textContent = payload.status;
           updateSlotConnectBtn(i);
           if (payload.logged) addLineTo(ref.logEl, payload.status, payload.timestamp, true);
         } else if (payload.type === "chat") {
