@@ -202,6 +202,7 @@
   .server-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
   .server-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .server-status { color: #9ad; font-size: 0.75rem; }
+  .select-slot-btn { flex-shrink: 0; padding: 0.4rem 0.7rem; font-size: 0.78rem; }
   .drag-handle {
     flex-shrink: 0; width: 9px; height: 13px; margin-left: 0.15rem; position: relative;
   }
@@ -306,6 +307,18 @@
   }
   .appFooter a { color: #999; text-decoration: none; }
   .appFooter a:hover { color: #ddd; }
+
+  .toast-container {
+    position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 300;
+    display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;
+  }
+  .toast {
+    background: rgba(38,38,46,0.92); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--glass-border); border-radius: 10px; padding: 0.75rem 1rem;
+    color: #eee; font-size: 0.85rem; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    opacity: 0; transform: translateY(0.5rem); transition: opacity 0.2s, transform 0.2s;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
 </style>
 </head>
 <body>
@@ -431,6 +444,8 @@
     </div>
   </div>
 
+  <div class="toast-container" id="toastContainer"></div>
+
   <footer class="appFooter">
     <span>© 2026 마인포탈</span>
     <a href="https://github.com/rdyjun/mc-chat-viewer" target="_blank" rel="noopener noreferrer">GitHub</a>
@@ -471,6 +486,19 @@
     const slotPickerBackdrop = document.getElementById("slotPickerBackdrop");
     const slotPickerClose = document.getElementById("slotPickerClose");
     const slotPickerList = document.getElementById("slotPickerList");
+    const toastContainer = document.getElementById("toastContainer");
+
+    function showToast(message) {
+      const el = document.createElement("div");
+      el.className = "toast";
+      el.textContent = message;
+      toastContainer.appendChild(el);
+      requestAnimationFrame(() => el.classList.add("show"));
+      setTimeout(() => {
+        el.classList.remove("show");
+        setTimeout(() => el.remove(), 200);
+      }, 2500);
+    }
 
     function openAddServerModal() {
       addServerModalBackdrop.classList.add("open");
@@ -487,12 +515,16 @@
       if (e.target === addServerModalBackdrop) closeAddServerModal();
     });
 
-    // Lets 연결 pick which open chat window a server lands in, instead of always
-    // guessing "first empty slot" — only meaningful once there's more than one slot.
+    // Lets the user pick which open chat window a server lands in, instead of always
+    // guessing "first empty slot". `hint` shows the "이제 연결 버튼을 누르세요" toast —
+    // skipped when this is opened right after a successful connect (server-grid-view),
+    // since in that case it's already connecting.
     let slotPickerTargetId = null;
+    let slotPickerHint = true;
 
-    function openSlotPicker(id) {
+    function openSlotPicker(id, hint) {
       slotPickerTargetId = id;
+      slotPickerHint = hint !== false;
       slotPickerList.innerHTML = slots.map((slot, i) => {
         const current = slot.serverId ? servers.find((s) => s.id === slot.serverId) : null;
         const label = current
@@ -507,6 +539,7 @@
           closeSlotPicker();
           renderServers();
           loadSlotDetail(i);
+          if (slotPickerHint) showToast("서버가 선택되었습니다. 연결 버튼을 눌러주세요.");
         });
       });
       slotPickerBackdrop.classList.add("open");
@@ -765,11 +798,16 @@
           '<span class="server-meta">' + escapeHtml(s.host) + ':' + s.port + '</span>' +
           '<div class="server-ping">' + pingBadgeHtml(s.host, s.port) + '</div>' +
           '<div class="server-status">' + escapeHtml(s.status) + '</div>' +
-          '</div>';
+          '</div>' +
+          '<button type="button" class="select-slot-btn">선택</button>';
 
         li.addEventListener("dragstart", (e) => {
           e.dataTransfer.setData("text/plain", s.id);
           e.dataTransfer.effectAllowed = "move";
+        });
+        li.querySelector(".select-slot-btn").addEventListener("click", (e) => {
+          e.stopPropagation();
+          openSlotPicker(s.id);
         });
         serverListEl.appendChild(li);
       });
@@ -1034,7 +1072,7 @@
         return;
       }
       if (slots.length > 1) {
-        openSlotPicker(id);
+        openSlotPicker(id, false);
       } else {
         assignServerToSlot(id);
       }
