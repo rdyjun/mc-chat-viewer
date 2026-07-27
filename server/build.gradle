@@ -1,0 +1,42 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '4.1.0'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.mineportal'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+repositories {
+    mavenCentral()
+    // MCProtocolLib is published here (GeyserMC / OpenCollab)
+    maven { url 'https://repo.opencollab.dev/main/' }
+    // MinecraftAuth and its net.lenni0451 dependencies
+    maven { url 'https://maven.lenni0451.net/releases' }
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+
+    implementation 'org.xerial:sqlite-jdbc:3.47.1.0'
+
+    // Same protocol/auth libraries desktop-client already uses and has proven.
+    implementation 'org.geysermc.mcprotocollib:protocol:1.21.7-1'
+    implementation 'net.raphimc:MinecraftAuth:4.1.1'
+    implementation 'net.kyori:adventure-text-serializer-plain:4.17.0'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+tasks.named('bootJar') {
+    archiveFileName.set('app.jar')
+}

@@ -1,8 +1,9 @@
 node_modules/
-dist/
+server/build/
+server/.gradle/
 .env
 .omc/
-# mineflayer/prismarine-auth caches the Microsoft device-code session tokens here after login
+# MinecraftAuth caches Microsoft login tokens here after login
 nmp-cache/
 # sqlite database (users/servers/user_servers) — persisted via docker-compose volume on deploy
 data/

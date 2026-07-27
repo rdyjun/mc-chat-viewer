@@ -1,0 +1,9 @@
+server:
+  port: ${WEB_PORT:3000}
+
+spring:
+  application:
+    name: mineportal-server
+  datasource:
+    url: jdbc:sqlite:${DB_PATH:./data/app.db}
+    driver-class-name: org.sqlite.JDBC
