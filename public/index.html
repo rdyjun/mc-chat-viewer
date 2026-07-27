@@ -59,11 +59,25 @@
   .tabNav button:hover { color: #eee; }
   .tabNav button.active { color: #fff; border-bottom-color: var(--accent); }
   .accountArea { margin-left: auto; display: flex; align-items: center; gap: 0.6rem; }
-  .lang-select {
-    background: rgba(255,255,255,0.06); color: #eee; border: 1px solid var(--glass-border);
-    border-radius: 8px; padding: 0.35rem 0.55rem; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+  .lang-picker { position: relative; }
+  .lang-btn {
+    background: none; border: none; box-shadow: none; padding: 0.2rem; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
   }
-  .lang-select:hover { background: rgba(255,255,255,0.12); }
+  .lang-btn:hover { background: rgba(255,255,255,0.08); filter: none; }
+  .lang-flag { font-size: 1.35rem; line-height: 1; }
+  .lang-menu {
+    display: none; position: absolute; top: calc(100% + 0.4rem); right: 0; z-index: 20;
+    background: rgba(38,38,46,0.9); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid var(--glass-border); border-radius: 10px; overflow: hidden;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.45); min-width: 8rem;
+  }
+  .lang-menu.open { display: block; }
+  .lang-menu .lang-item {
+    display: flex; align-items: center; gap: 0.5rem; padding: 0.55rem 0.9rem; font-size: 0.82rem; cursor: pointer; white-space: nowrap;
+  }
+  .lang-menu .lang-item:hover { background: rgba(255,255,255,0.08); }
+  .lang-menu .lang-item .lang-flag { font-size: 1.1rem; }
   #accountStatus { font-size: 0.82rem; color: #ccc; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.4rem; }
   .account-face { width: 1.35rem; height: 1.35rem; border-radius: 4px; image-rendering: pixelated; display: block; }
   .info-icon {
@@ -345,10 +359,10 @@
       <span id="accountStatus" data-i18n="accountChecking">확인 중...</span>
       <button type="button" id="loginTriggerBtn" style="display:none" data-i18n="loginBtn">로그인</button>
     </div>
-    <select id="langSelect" class="lang-select">
-      <option value="ko">한국어</option>
-      <option value="en">English</option>
-    </select>
+    <div class="lang-picker" id="langPicker">
+      <button type="button" class="lang-btn" id="langBtn"><span class="lang-flag" id="langFlag"></span></button>
+      <div class="lang-menu" id="langMenu"></div>
+    </div>
   </header>
 
   <div class="modal-backdrop" id="loginModalBackdrop">
@@ -657,7 +671,37 @@
     const slotPickerClose = document.getElementById("slotPickerClose");
     const slotPickerList = document.getElementById("slotPickerList");
     const toastContainer = document.getElementById("toastContainer");
-    const langSelect = document.getElementById("langSelect");
+    const LANG_META = {
+      ko: { flag: "🇰🇷", label: "한국어" },
+      en: { flag: "🇺🇸", label: "English" },
+    };
+    const langPicker = document.getElementById("langPicker");
+    const langBtn = document.getElementById("langBtn");
+    const langFlag = document.getElementById("langFlag");
+    const langMenu = document.getElementById("langMenu");
+
+    function renderLangPicker() {
+      langFlag.textContent = LANG_META[lang].flag;
+      langMenu.innerHTML = Object.keys(LANG_META)
+        .filter((code) => code !== lang)
+        .map((code) =>
+          '<div class="lang-item" data-lang="' + code + '"><span class="lang-flag">' + LANG_META[code].flag + '</span>' + LANG_META[code].label + '</div>'
+        ).join("");
+      langMenu.querySelectorAll(".lang-item").forEach((item) => {
+        item.addEventListener("click", () => {
+          langMenu.classList.remove("open");
+          setLang(item.dataset.lang);
+        });
+      });
+    }
+
+    langBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      langMenu.classList.toggle("open");
+    });
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest("#langPicker")) langMenu.classList.remove("open");
+    });
 
     function showToast(message) {
       const el = document.createElement("div");
@@ -1294,7 +1338,7 @@
     function setLang(newLang) {
       lang = newLang;
       localStorage.setItem("lang", lang);
-      langSelect.value = lang;
+      renderLangPicker();
       applyI18n();
       document.title = t("appTitle");
       applyDownloadAvailability(downloadBtn);
@@ -1304,8 +1348,7 @@
       renderServers();
     }
 
-    langSelect.value = lang;
-    langSelect.addEventListener("change", () => setLang(langSelect.value));
+    renderLangPicker();
     applyI18n();
 
     const wsProtocol = location.protocol === "https:" ? "wss:" : "ws:";
