@@ -8,16 +8,22 @@
   // flashing generic "다운로드" text and then flipping once the page's main script
   // runs at the bottom of the body.
   var IS_WINDOWS = /Win/i.test(navigator.platform || navigator.userAgent || "");
+  var DOWNLOAD_STRINGS = {
+    ko: { windows: "⬇ Download for Windows", other: "🚧 다른 OS는 준비 중이에요" },
+    en: { windows: "⬇ Download for Windows", other: "🚧 Other OS support coming soon" },
+  };
   function applyDownloadAvailability(el) {
+    var lang = localStorage.getItem("lang") || "ko";
+    var s = DOWNLOAD_STRINGS[lang] || DOWNLOAD_STRINGS.ko;
     if (IS_WINDOWS) {
-      el.textContent = "⬇ Download for Windows";
+      el.textContent = s.windows;
     } else {
-      el.textContent = "🚧 다른 OS는 준비 중이에요";
+      el.textContent = s.other;
       el.classList.add("btn-disabled");
     }
   }
 </script>
-<title>마인포탈</title>
+<title data-i18n="appTitle">마인포탈</title>
 <link rel="icon" type="image/png" href="/favicon.png" />
 <style>
   :root {
@@ -52,6 +58,11 @@
   .tabNav button:hover { color: #eee; }
   .tabNav button.active { color: #fff; border-bottom-color: var(--accent); }
   .accountArea { margin-left: auto; display: flex; align-items: center; gap: 0.6rem; }
+  .lang-select {
+    background: rgba(255,255,255,0.06); color: #eee; border: 1px solid var(--glass-border);
+    border-radius: 8px; padding: 0.35rem 0.55rem; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+  }
+  .lang-select:hover { background: rgba(255,255,255,0.12); }
   #accountStatus { font-size: 0.82rem; color: #ccc; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.4rem; }
   .account-face { width: 1.35rem; height: 1.35rem; border-radius: 4px; image-rendering: pixelated; display: block; }
   .info-icon {
@@ -325,33 +336,37 @@
   <header class="appHeader">
     <div class="logo-wrap" id="logoBtn"><img src="/logo.png" alt="MinePortal" /></div>
     <nav class="tabNav">
-      <button type="button" id="tabHomeBtn" class="active" style="display:none">홈</button>
-      <button type="button" id="tabListBtn">플레이</button>
-      <button type="button" id="tabServersBtn">서버 목록</button>
+      <button type="button" id="tabHomeBtn" class="active" style="display:none" data-i18n="tabHome">홈</button>
+      <button type="button" id="tabListBtn" data-i18n="tabPlay">플레이</button>
+      <button type="button" id="tabServersBtn" data-i18n="serverListTitle">서버 목록</button>
     </nav>
     <div class="accountArea">
-      <span id="accountStatus">확인 중...</span>
-      <button type="button" id="loginTriggerBtn" style="display:none">로그인</button>
+      <span id="accountStatus" data-i18n="accountChecking">확인 중...</span>
+      <button type="button" id="loginTriggerBtn" style="display:none" data-i18n="loginBtn">로그인</button>
     </div>
+    <select id="langSelect" class="lang-select">
+      <option value="ko">한국어</option>
+      <option value="en">English</option>
+    </select>
   </header>
 
   <div class="modal-backdrop" id="loginModalBackdrop">
     <div class="modal">
       <button type="button" class="modal-close" id="loginModalClose">✕</button>
-      <h2>로그인</h2>
+      <h2 data-i18n="loginBtn">로그인</h2>
       <p class="login-modal-reason" id="loginModalReason" style="display:none"></p>
-      <a class="ms-login-btn" href="/api/account/login/microsoft">Microsoft로 로그인</a>
+      <a class="ms-login-btn" href="/api/account/login/microsoft" data-i18n="msLoginBtn">Microsoft로 로그인</a>
     </div>
   </div>
 
   <div class="modal-backdrop" id="addServerModalBackdrop">
     <div class="modal">
       <button type="button" class="modal-close" id="addServerModalClose">✕</button>
-      <h2>서버 추가</h2>
+      <h2 data-i18n="addServerModalTitle">서버 추가</h2>
       <form id="addServerForm">
-        <input name="host" placeholder="서버 주소 (예: mc.dongsoop.site:25565)" required />
-        <input name="version" placeholder="버전 (예: 26.1.2 또는 775)" required />
-        <button type="submit">추가</button>
+        <input name="host" placeholder="서버 주소 (예: mc.dongsoop.site:25565)" data-i18n-placeholder="hostPlaceholder" required />
+        <input name="version" placeholder="버전 (예: 26.1.2 또는 775)" data-i18n-placeholder="versionPlaceholder" required />
+        <button type="submit" data-i18n="addBtn">추가</button>
       </form>
     </div>
   </div>
@@ -359,7 +374,7 @@
   <div class="modal-backdrop" id="slotPickerBackdrop">
     <div class="modal">
       <button type="button" class="modal-close" id="slotPickerClose">✕</button>
-      <h2>어느 창에 띄울까요?</h2>
+      <h2 data-i18n="slotPickerTitle">어느 창에 띄울까요?</h2>
       <div class="slot-picker-list" id="slotPickerList"></div>
     </div>
   </div>
@@ -368,8 +383,8 @@
     <div class="gate-modal">
       <button type="button" class="gate-close" id="gateCloseBtn">✕</button>
       <div class="gate-icon">🖥️</div>
-      <h2>데스크톱 프로그램이 필요해요</h2>
-      <p>플레이 탭은 내 PC에서 직접 서버에 접속하는 데스크톱 클라이언트가 실행 중일 때만 이용할 수 있어요.<br />프로그램을 내려받아 실행한 뒤 다시 시도해주세요.</p>
+      <h2 data-i18n="gateTitle">데스크톱 프로그램이 필요해요</h2>
+      <p data-i18n-html="gateText">플레이 탭은 내 PC에서 직접 서버에 접속하는 데스크톱 클라이언트가 실행 중일 때만 이용할 수 있어요.<br />프로그램을 내려받아 실행한 뒤 다시 시도해주세요.</p>
       <div class="gate-buttons">
         <a class="btn-download" id="gateDownloadBtn" href="https://github.com/rdyjun/mc-chat-viewer/releases/latest/download/MinePortal-win.zip">⬇ 다운로드</a>
         <script>applyDownloadAvailability(document.getElementById("gateDownloadBtn"));</script>
@@ -379,17 +394,17 @@
 
   <div class="view active" id="homeView">
     <div class="hero">
-      <h1>마인포탈</h1>
-      <p>내 마인크래프트 계정으로 서버 채팅을 보고, 보내세요.</p>
+      <h1 data-i18n="appTitle">마인포탈</h1>
+      <p data-i18n="heroDesc">내 마인크래프트 계정으로 서버 채팅을 보고, 보내세요.</p>
       <div class="hero-buttons">
         <a class="btn-download" id="downloadBtn" href="https://github.com/rdyjun/mc-chat-viewer/releases/latest/download/MinePortal-win.zip">⬇ 다운로드</a>
         <script>applyDownloadAvailability(document.getElementById("downloadBtn"));</script>
-        <button type="button" class="btn-try" id="tryWebBtn">🌐 웹에서 체험하기</button>
+        <button type="button" class="btn-try" id="tryWebBtn" data-i18n="tryWebBtn">🌐 웹에서 체험하기</button>
       </div>
-      <div class="hero-note" id="desktopStatusNote">데스크톱 프로그램은 내 PC에서 직접 접속해 IP 제한이 있는 서버에서도 안정적으로 동작해요.</div>
+      <div class="hero-note" id="desktopStatusNote" data-i18n="desktopNoteDefault">데스크톱 프로그램은 내 PC에서 직접 접속해 IP 제한이 있는 서버에서도 안정적으로 동작해요.</div>
     </div>
     <div class="panel" id="recentServersPanel" style="display:none">
-      <h2>최근 접속 서버</h2>
+      <h2 data-i18n="recentServersTitle">최근 접속 서버</h2>
       <div class="top-servers" id="recentServers"></div>
     </div>
   </div>
@@ -397,14 +412,14 @@
   <div class="view" id="listView">
     <div class="mode-toggle-skeleton" id="modeToggleSkeleton"></div>
     <div class="mode-toggle" id="modeToggle" style="display:none">
-      <button type="button" class="mode-toggle-btn" data-mode="real" id="modeRealBtn">정식 모드</button>
-      <button type="button" class="mode-toggle-btn" data-mode="trial" id="modeTrialBtn">체험모드</button>
+      <button type="button" class="mode-toggle-btn" data-mode="real" id="modeRealBtn" data-i18n="modeReal">정식 모드</button>
+      <button type="button" class="mode-toggle-btn" data-mode="trial" id="modeTrialBtn" data-i18n="modeTrial">체험모드</button>
     </div>
-    <div class="trial-warning" id="trialWarning">⚠ 지금은 <b>웹 체험 모드</b>예요. 이 방식은 서버가 대신 접속을 대리해주는 방식이라, 공인/실서버에 접속하면 "동일 IP 다중 접속" 등으로 인식되어 <b>밴(차단)</b>될 수 있어요. 데스크톱 클라이언트를 사용하면 이 문제 없이 <b>정식 모드</b>로 플레이할 수 있어요.</div>
+    <div class="trial-warning" id="trialWarning" data-i18n-html="trialWarningHtml">⚠ 지금은 <b>웹 체험 모드</b>예요. 이 방식은 서버가 대신 접속을 대리해주는 방식이라, 공인/실서버에 접속하면 "동일 IP 다중 접속" 등으로 인식되어 <b>밴(차단)</b>될 수 있어요. 데스크톱 클라이언트를 사용하면 이 문제 없이 <b>정식 모드</b>로 플레이할 수 있어요.</div>
     <div class="layout">
       <div class="sidebar">
         <div class="panel">
-          <h2>서버 탐색</h2>
+          <h2 data-i18n="exploreTitle">서버 탐색</h2>
           <div class="explore-links">
             <a class="button-link" href="https://www.minelist.kr" target="_blank" rel="noopener noreferrer">마인리스트 (minelist.kr)</a>
             <a class="button-link" href="https://minesquare.kr" target="_blank" rel="noopener noreferrer">마인스퀘어 (minesquare.kr)</a>
@@ -414,8 +429,8 @@
 
         <div class="panel">
           <div class="panel-header">
-            <h2>서버 목록</h2>
-            <button type="button" class="add-server-btn" id="addServerBtn">+ 서버 추가</button>
+            <h2 data-i18n="serverListTitle">서버 목록</h2>
+            <button type="button" class="add-server-btn" id="addServerBtn" data-i18n="addServerBtn">+ 서버 추가</button>
           </div>
           <ul id="serverList"></ul>
         </div>
@@ -425,9 +440,9 @@
 
       <div class="panel" id="chatPanel">
         <div class="layout-switcher" id="layoutSwitcher">
-          <button type="button" data-n="1" class="active" title="1개"><span class="layout-icon n1"><i></i></span></button>
-          <button type="button" data-n="2" title="2개"><span class="layout-icon n2"><i></i><i></i></span></button>
-          <button type="button" data-n="4" title="4개"><span class="layout-icon n4"><i></i><i></i><i></i><i></i></span></button>
+          <button type="button" data-n="1" class="active" data-i18n-title="layout1"><span class="layout-icon n1"><i></i></span></button>
+          <button type="button" data-n="2" data-i18n-title="layout2"><span class="layout-icon n2"><i></i><i></i></span></button>
+          <button type="button" data-n="4" data-i18n-title="layout4"><span class="layout-icon n4"><i></i><i></i><i></i><i></i></span></button>
         </div>
         <div class="chat-grid" id="chatGrid" data-layout="1"></div>
       </div>
@@ -437,8 +452,8 @@
   <div class="view" id="serversView">
     <div class="panel">
       <div class="panel-header">
-        <h2>서버 목록</h2>
-        <button type="button" class="add-server-btn" id="addServerBtn2">+ 서버 추가</button>
+        <h2 data-i18n="serverListTitle">서버 목록</h2>
+        <button type="button" class="add-server-btn" id="addServerBtn2" data-i18n="addServerBtn">+ 서버 추가</button>
       </div>
       <div class="server-grid-view" id="serverGridView"></div>
     </div>
@@ -447,11 +462,164 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <footer class="appFooter">
-    <span>© 2026 마인포탈</span>
+    <span data-i18n="footerCopy">© 2026 마인포탈</span>
     <a href="https://github.com/rdyjun/mc-chat-viewer" target="_blank" rel="noopener noreferrer">GitHub</a>
   </footer>
 
   <script>
+    const translations = {
+      ko: {
+        appTitle: "마인포탈",
+        tabHome: "홈",
+        tabPlay: "플레이",
+        loginBtn: "로그인",
+        msLoginBtn: "Microsoft로 로그인",
+        addServerModalTitle: "서버 추가",
+        hostPlaceholder: "서버 주소 (예: mc.dongsoop.site:25565)",
+        versionPlaceholder: "버전 (예: 26.1.2 또는 775)",
+        addBtn: "추가",
+        slotPickerTitle: "어느 창에 띄울까요?",
+        slotPickLabelReplace: "{n}번 창 ({target} 교체)",
+        slotPickLabelEmpty: "{n}번 창 (비어있음)",
+        gateTitle: "데스크톱 프로그램이 필요해요",
+        gateText: "플레이 탭은 내 PC에서 직접 서버에 접속하는 데스크톱 클라이언트가 실행 중일 때만 이용할 수 있어요.<br />프로그램을 내려받아 실행한 뒤 다시 시도해주세요.",
+        downloadWindows: "⬇ Download for Windows",
+        downloadOtherOs: "🚧 다른 OS는 준비 중이에요",
+        heroDesc: "내 마인크래프트 계정으로 서버 채팅을 보고, 보내세요.",
+        tryWebBtn: "🌐 웹에서 체험하기",
+        desktopNoteDefault: "데스크톱 프로그램은 내 PC에서 직접 접속해 IP 제한이 있는 서버에서도 안정적으로 동작해요.",
+        desktopNoteConnected: "데스크톱 클라이언트가 {server} 에 접속되어 있어요.",
+        desktopNoteRunning: "데스크톱 클라이언트가 백그라운드에서 실행 중이에요.",
+        desktopRunningLabel: "✅ 데스크톱 클라이언트 실행 중 (v{version})",
+        recentServersTitle: "최근 접속 서버",
+        modeReal: "정식 모드",
+        modeTrial: "체험모드",
+        trialWarningHtml: "⚠ 지금은 <b>웹 체험 모드</b>예요. 이 방식은 서버가 대신 접속을 대리해주는 방식이라, 공인/실서버에 접속하면 \"동일 IP 다중 접속\" 등으로 인식되어 <b>밴(차단)</b>될 수 있어요. 데스크톱 클라이언트를 사용하면 이 문제 없이 <b>정식 모드</b>로 플레이할 수 있어요.",
+        exploreTitle: "서버 탐색",
+        serverListTitle: "서버 목록",
+        addServerBtn: "+ 서버 추가",
+        footerCopy: "© 2026 마인포탈",
+        layout1: "1개",
+        layout2: "2개",
+        layout4: "4개",
+        serverSelectPlaceholder: "서버 선택",
+        connectBtn: "연결",
+        connectedBtn: "연결됨",
+        connectingBtn: "연결중",
+        chatInputPlaceholder: "채팅 입력 (자동 서명됨)",
+        sendBtn: "전송",
+        selectBtn: "선택",
+        slotMenuEmpty: "등록된 서버가 없습니다.",
+        serverGridEmpty: "등록된 서버가 없습니다. Play 탭에서 추가해보세요.",
+        goToPlayBtn: "Play로 이동",
+        pingChecking: "확인 중...",
+        pingOnline: "🟢 {online}/{max}명",
+        pingOffline: "🔴 오프라인",
+        accountChecking: "확인 중...",
+        accountLoggingIn: "로그인 진행 중...",
+        accountLoginFailed: "로그인 실패",
+        accountNeedsLogin: "서버 접속 전, 로그인이 필요합니다.",
+        loginNeededForServers: "로그인 후 서버 목록을 이용할 수 있어요.",
+        toastServerSelected: "서버가 선택되었습니다. 연결 버튼을 눌러주세요.",
+        alertSelectServerFirst: "먼저 이 칸에 서버를 선택하세요.",
+        alertConnectFirst: "먼저 연결 버튼을 눌러 서버에 연결하세요.",
+        alertSendFailed: "전송 실패: {error}",
+        alertLoginFirst: "먼저 로그인 해주세요.",
+        alertConnectFailed: "연결 실패: {error}",
+        alertAddServerFailed: "서버 추가 실패: {error}",
+        sysTag: "마인포탈",
+      },
+      en: {
+        appTitle: "MinePortal",
+        tabHome: "Home",
+        tabPlay: "Play",
+        loginBtn: "Log in",
+        msLoginBtn: "Log in with Microsoft",
+        addServerModalTitle: "Add Server",
+        hostPlaceholder: "Server address (e.g. mc.dongsoop.site:25565)",
+        versionPlaceholder: "Version (e.g. 26.1.2 or 775)",
+        addBtn: "Add",
+        slotPickerTitle: "Which window should this open in?",
+        slotPickLabelReplace: "Window {n} (replace {target})",
+        slotPickLabelEmpty: "Window {n} (empty)",
+        gateTitle: "Desktop app required",
+        gateText: "The Play tab is only available while the desktop client — which connects to servers directly from your PC — is running.<br />Please download and run it, then try again.",
+        downloadWindows: "⬇ Download for Windows",
+        downloadOtherOs: "🚧 Other OS support coming soon",
+        heroDesc: "View and send server chat using your own Minecraft account.",
+        tryWebBtn: "🌐 Try it in the browser",
+        desktopNoteDefault: "The desktop app connects directly from your PC, so it works reliably even on servers with IP restrictions.",
+        desktopNoteConnected: "The desktop client is connected to {server}.",
+        desktopNoteRunning: "The desktop client is running in the background.",
+        desktopRunningLabel: "✅ Desktop client running (v{version})",
+        recentServersTitle: "Recently Played Servers",
+        modeReal: "Full Mode",
+        modeTrial: "Trial Mode",
+        trialWarningHtml: "⚠ You're in <b>web trial mode</b>. Since the server relays your connection on your behalf, official/public servers may flag it as \"multiple connections from the same IP\" and <b>ban</b> you. Use the desktop client to play in <b>Full Mode</b> without this risk.",
+        exploreTitle: "Discover Servers",
+        serverListTitle: "Server List",
+        addServerBtn: "+ Add Server",
+        footerCopy: "© 2026 MinePortal",
+        layout1: "1 window",
+        layout2: "2 windows",
+        layout4: "4 windows",
+        serverSelectPlaceholder: "Select server",
+        connectBtn: "Connect",
+        connectedBtn: "Connected",
+        connectingBtn: "Connecting",
+        chatInputPlaceholder: "Type a chat message (auto-signed)",
+        sendBtn: "Send",
+        selectBtn: "Select",
+        slotMenuEmpty: "No servers registered.",
+        serverGridEmpty: "No servers registered. Add one from the Play tab.",
+        goToPlayBtn: "Go to Play",
+        pingChecking: "Checking...",
+        pingOnline: "🟢 {online}/{max} players",
+        pingOffline: "🔴 Offline",
+        accountChecking: "Checking...",
+        accountLoggingIn: "Logging in...",
+        accountLoginFailed: "Login failed",
+        accountNeedsLogin: "You need to log in before connecting to a server.",
+        loginNeededForServers: "Log in to use the server list.",
+        toastServerSelected: "Server selected. Click Connect to continue.",
+        alertSelectServerFirst: "Please select a server for this slot first.",
+        alertConnectFirst: "Please click Connect to connect to the server first.",
+        alertSendFailed: "Send failed: {error}",
+        alertLoginFirst: "Please log in first.",
+        alertConnectFailed: "Connect failed: {error}",
+        alertAddServerFailed: "Failed to add server: {error}",
+        sysTag: "MinePortal",
+      },
+    };
+
+    let lang = localStorage.getItem("lang") || "ko";
+
+    function t(key, vars) {
+      let text = (translations[lang] && translations[lang][key]) || translations.ko[key] || key;
+      if (vars) {
+        Object.keys(vars).forEach((k) => {
+          text = text.replace("{" + k + "}", vars[k]);
+        });
+      }
+      return text;
+    }
+
+    function applyI18n() {
+      document.documentElement.lang = lang;
+      document.querySelectorAll("[data-i18n]").forEach((el) => {
+        el.textContent = t(el.dataset.i18n);
+      });
+      document.querySelectorAll("[data-i18n-html]").forEach((el) => {
+        el.innerHTML = t(el.dataset.i18nHtml);
+      });
+      document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
+        el.placeholder = t(el.dataset.i18nPlaceholder);
+      });
+      document.querySelectorAll("[data-i18n-title]").forEach((el) => {
+        el.title = t(el.dataset.i18nTitle);
+      });
+    }
+
     const accountStatusEl = document.getElementById("accountStatus");
     const addServerForm = document.getElementById("addServerForm");
     const serverListEl = document.getElementById("serverList");
@@ -487,6 +655,7 @@
     const slotPickerClose = document.getElementById("slotPickerClose");
     const slotPickerList = document.getElementById("slotPickerList");
     const toastContainer = document.getElementById("toastContainer");
+    const langSelect = document.getElementById("langSelect");
 
     function showToast(message) {
       const el = document.createElement("div");
@@ -516,7 +685,7 @@
     });
 
     // Lets the user pick which open chat window a server lands in, instead of always
-    // guessing "first empty slot". `hint` shows the "이제 연결 버튼을 누르세요" toast —
+    // guessing "first empty slot". `hint` shows the "server selected, click connect" toast —
     // skipped when this is opened right after a successful connect (server-grid-view),
     // since in that case it's already connecting.
     let slotPickerTargetId = null;
@@ -528,8 +697,8 @@
       slotPickerList.innerHTML = slots.map((slot, i) => {
         const current = slot.serverId ? servers.find((s) => s.id === slot.serverId) : null;
         const label = current
-          ? (i + 1) + "번 창 (" + escapeHtml(current.host + ':' + current.port) + " 교체)"
-          : (i + 1) + "번 창 (비어있음)";
+          ? t("slotPickLabelReplace", { n: i + 1, target: escapeHtml(current.host + ':' + current.port) })
+          : t("slotPickLabelEmpty", { n: i + 1 });
         return '<button type="button" class="slot-pick-btn" data-i="' + i + '">' + label + '</button>';
       }).join("");
       slotPickerList.querySelectorAll(".slot-pick-btn").forEach((btn) => {
@@ -539,7 +708,7 @@
           closeSlotPicker();
           renderServers();
           loadSlotDetail(i);
-          if (slotPickerHint) showToast("서버가 선택되었습니다. 연결 버튼을 눌러주세요.");
+          if (slotPickerHint) showToast(t("toastServerSelected"));
         });
       });
       slotPickerBackdrop.classList.add("open");
@@ -602,14 +771,22 @@
       }
     }
 
+    let desktopClientInfo = null; // set once the desktop client is detected, re-used to re-render its status on language switch
+
+    function renderDesktopStatus() {
+      if (!desktopClientInfo) return;
+      downloadBtn.textContent = t("desktopRunningLabel", { version: desktopClientInfo.version });
+      downloadBtn.href = "#";
+      desktopStatusNote.textContent = desktopClientInfo.connected
+        ? t("desktopNoteConnected", { server: desktopClientInfo.server })
+        : t("desktopNoteRunning");
+    }
+
     async function checkDesktopClient() {
       const data = await probeDesktopClient();
       if (!data) return;
-      downloadBtn.textContent = "✅ 데스크톱 클라이언트 실행 중 (v" + data.version + ")";
-      downloadBtn.href = "#";
-      desktopStatusNote.textContent = data.connected
-        ? "데스크톱 클라이언트가 " + data.server + " 에 접속되어 있어요."
-        : "데스크톱 클라이언트가 백그라운드에서 실행 중이에요.";
+      desktopClientInfo = data;
+      renderDesktopStatus();
     }
 
     checkDesktopClient();
@@ -675,14 +852,14 @@
     modeTrialBtn.addEventListener("click", () => setPlayMode("trial"));
     tabServersBtn.addEventListener("click", () => {
       if (account.status !== "logged-in") {
-        openLoginModal("로그인 후 서버 목록을 이용할 수 있어요.");
+        openLoginModal(t("loginNeededForServers"));
         return;
       }
       showTab("servers");
     });
 
     function pingBadgeHtml(host, port) {
-      return '<span class="ping-badge" data-host="' + escapeHtml(host) + '" data-port="' + port + '">확인 중...</span>';
+      return '<span class="ping-badge" data-host="' + escapeHtml(host) + '" data-port="' + port + '">' + t("pingChecking") + '</span>';
     }
 
     // Server List Ping (loginless status query) — fetched per-badge so a slow/unreachable
@@ -695,24 +872,29 @@
           const res = await fetch("/api/ping?host=" + encodeURIComponent(host) + "&port=" + encodeURIComponent(port));
           const data = await res.json();
           if (data.online) {
-            badge.textContent = "🟢 " + (data.playersOnline ?? "?") + "/" + (data.playersMax ?? "?") + "명";
+            badge.textContent = t("pingOnline", { online: data.playersOnline ?? "?", max: data.playersMax ?? "?" });
             badge.classList.add("online");
           } else {
-            badge.textContent = "🔴 오프라인";
+            badge.textContent = t("pingOffline");
             badge.classList.add("offline");
           }
         } catch {
-          badge.textContent = "🔴 오프라인";
+          badge.textContent = t("pingOffline");
           badge.classList.add("offline");
         }
       });
+    }
+
+    function connectLabel(s) {
+      const canConnect = s.phase !== "active";
+      return canConnect ? t("connectBtn") : (s.connected ? t("connectedBtn") : t("connectingBtn"));
     }
 
     function renderServerGridView() {
       serverGridView.innerHTML = servers.length
         ? servers.map((s) => {
             const canConnect = s.phase !== "active";
-            const label = canConnect ? "연결" : (s.connected ? "연결됨" : "연결중");
+            const label = connectLabel(s);
             return '<div class="server-card" data-id="' + s.id + '">' +
               '<div class="name">' + escapeHtml(s.host) + ':' + s.port + '</div>' +
               '<div class="status">' + escapeHtml(s.status) + '</div>' +
@@ -720,7 +902,7 @@
               '<button type="button" ' + (canConnect ? "" : "disabled") + '>' + label + '</button>' +
               '</div>';
           }).join("")
-        : '<div class="empty">등록된 서버가 없습니다. Play 탭에서 추가해보세요.</div>';
+        : '<div class="empty">' + t("serverGridEmpty") + '</div>';
       serverGridView.querySelectorAll(".server-card").forEach((card) => {
         card.querySelector("button").onclick = () => connectServer(card.dataset.id);
       });
@@ -743,7 +925,7 @@
         '<span class="rank-meta">' + escapeHtml(s.host) + ':' + s.port + '</span>' +
         pingBadgeHtml(s.host, s.port) +
         '</div>' +
-        '<button type="button" class="rank-goto">Play로 이동</button>' +
+        '<button type="button" class="rank-goto">' + t("goToPlayBtn") + '</button>' +
         '</div>'
       ).join("");
       recentServersEl.querySelectorAll(".rank-row").forEach((row) => {
@@ -773,14 +955,14 @@
         loginTriggerBtn.style.display = "none";
         closeLoginModal();
       } else if (account.status === "logging-in") {
-        accountStatusEl.textContent = "로그인 진행 중...";
+        accountStatusEl.textContent = t("accountLoggingIn");
         loginTriggerBtn.style.display = "none";
       } else if (account.status === "error") {
-        accountStatusEl.innerHTML = "로그인 실패 " +
+        accountStatusEl.innerHTML = t("accountLoginFailed") + " " +
           '<span class="info-icon" tabindex="0">ⓘ<span class="info-tip">' + escapeHtml(account.error) + '</span></span>';
         loginTriggerBtn.style.display = "";
       } else {
-        accountStatusEl.textContent = "서버 접속 전, 로그인이 필요합니다.";
+        accountStatusEl.textContent = t("accountNeedsLogin");
         loginTriggerBtn.style.display = "";
       }
       loadRecentServers();
@@ -799,7 +981,7 @@
           '<div class="server-ping">' + pingBadgeHtml(s.host, s.port) + '</div>' +
           '<div class="server-status">' + escapeHtml(s.status) + '</div>' +
           '</div>' +
-          '<button type="button" class="select-slot-btn">선택</button>';
+          '<button type="button" class="select-slot-btn">' + t("selectBtn") + '</button>';
 
         li.addEventListener("dragstart", (e) => {
           e.dataTransfer.setData("text/plain", s.id);
@@ -842,12 +1024,12 @@
         div.className = "chat-slot";
         div.innerHTML =
           '<div class="slot-header">' +
-          '<div class="slot-server-picker"><button type="button" class="slot-server-btn">서버 선택</button><div class="slot-server-menu"></div></div>' +
-          '<button type="button" class="slot-connect-btn" disabled>연결</button>' +
+          '<div class="slot-server-picker"><button type="button" class="slot-server-btn">' + t("serverSelectPlaceholder") + '</button><div class="slot-server-menu"></div></div>' +
+          '<button type="button" class="slot-connect-btn" disabled>' + t("connectBtn") + '</button>' +
           '<span class="slot-status"></span>' +
           '</div>' +
           '<div class="slot-log"></div>' +
-          '<form class="slot-chat-form"><input placeholder="채팅 입력 (자동 서명됨)" style="flex:1" /><button type="submit">전송</button></form>';
+          '<form class="slot-chat-form"><input placeholder="' + escapeHtml(t("chatInputPlaceholder")) + '" style="flex:1" /><button type="submit">' + t("sendBtn") + '</button></form>';
         chatGrid.appendChild(div);
 
         const btnEl = div.querySelector(".slot-server-btn");
@@ -892,12 +1074,12 @@
           e.preventDefault();
           const serverId = slots[i].serverId;
           if (!serverId) {
-            alert("먼저 이 칸에 서버를 선택하세요.");
+            alert(t("alertSelectServerFirst"));
             return;
           }
           const server = servers.find((s) => s.id === serverId);
           if (!server || !server.connected) {
-            alert("먼저 연결 버튼을 눌러 서버에 연결하세요.");
+            alert(t("alertConnectFirst"));
             return;
           }
           const message = inputEl.value.trim();
@@ -909,7 +1091,7 @@
           });
           if (!res.ok) {
             const body = await res.json().catch(() => ({ error: res.statusText }));
-            alert("전송 실패: " + body.error);
+            alert(t("alertSendFailed", { error: body.error }));
             return;
           }
           inputEl.value = "";
@@ -921,20 +1103,20 @@
       slots.forEach((_, i) => loadSlotDetail(i));
     }
 
-    // Reflects a slot's server connection state onto its 연결 button — mirrors the
-    // same 연결/연결중/연결됨 labeling used by the sidebar list and server grid.
+    // Reflects a slot's server connection state onto its connect button — mirrors the
+    // same connect/connecting/connected labeling used by the sidebar list and server grid.
     function updateSlotConnectBtn(i) {
       const ref = slotRefs[i];
       if (!ref) return;
       const serverId = slots[i] && slots[i].serverId;
       const s = serverId && servers.find((x) => x.id === serverId);
       if (!s) {
-        ref.connectBtnEl.textContent = "연결";
+        ref.connectBtnEl.textContent = t("connectBtn");
         ref.connectBtnEl.disabled = true;
         return;
       }
       const canConnect = s.phase !== "active";
-      ref.connectBtnEl.textContent = canConnect ? "연결" : (s.connected ? "연결됨" : "연결중");
+      ref.connectBtnEl.textContent = connectLabel(s);
       ref.connectBtnEl.disabled = !canConnect;
     }
 
@@ -945,10 +1127,10 @@
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: res.statusText }));
         if (body.code === "not-logged-in") {
-          alert("먼저 로그인 해주세요.");
+          alert(t("alertLoginFirst"));
           openLoginModal();
         } else {
-          alert("연결 실패: " + body.error);
+          alert(t("alertConnectFailed", { error: body.error }));
         }
         return;
       }
@@ -971,14 +1153,14 @@
         }
         const current = slots[i].serverId;
         const currentServer = servers.find((s) => s.id === current);
-        ref.btnEl.textContent = currentServer ? currentServer.host + ':' + currentServer.port : "서버 선택";
+        ref.btnEl.textContent = currentServer ? currentServer.host + ':' + currentServer.port : t("serverSelectPlaceholder");
         updateSlotConnectBtn(i);
         ref.menuEl.innerHTML = servers.length
           ? servers.map((s) =>
               '<div class="item' + (s.id === current ? ' selected' : '') + '" data-id="' + s.id + '">' +
               escapeHtml(s.host) + ':' + s.port + '</div>'
             ).join("")
-          : '<div class="empty">등록된 서버가 없습니다.</div>';
+          : '<div class="empty">' + t("slotMenuEmpty") + '</div>';
         ref.menuEl.querySelectorAll(".item").forEach((item) => {
           item.addEventListener("click", () => {
             slots[i].serverId = item.dataset.id;
@@ -1064,10 +1246,10 @@
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: res.statusText }));
         if (body.code === "not-logged-in") {
-          alert("먼저 로그인 해주세요.");
+          alert(t("alertLoginFirst"));
           openLoginModal();
         } else {
-          alert("연결 실패: " + body.error);
+          alert(t("alertConnectFailed", { error: body.error }));
         }
         return;
       }
@@ -1081,9 +1263,9 @@
     function addLineTo(container, text, time, system) {
       const div = document.createElement("div");
       div.className = system ? "line line-system" : "line";
-      const t = new Date(time).toLocaleTimeString();
-      div.innerHTML = '<span class="time">' + t + '</span>' +
-        (system ? '<b class="sys-tag">마인포탈</b> ' : '') + escapeHtml(text);
+      const timeStr = new Date(time).toLocaleTimeString();
+      div.innerHTML = '<span class="time">' + timeStr + '</span>' +
+        (system ? '<b class="sys-tag">' + t("sysTag") + '</b> ' : '') + escapeHtml(text);
       container.appendChild(div);
       container.scrollTop = container.scrollHeight;
     }
@@ -1100,12 +1282,29 @@
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: res.statusText }));
-        alert("서버 추가 실패: " + body.error);
+        alert(t("alertAddServerFailed", { error: body.error }));
         return;
       }
       addServerForm.reset();
       closeAddServerModal();
     });
+
+    function setLang(newLang) {
+      lang = newLang;
+      localStorage.setItem("lang", lang);
+      langSelect.value = lang;
+      applyI18n();
+      document.title = t("appTitle");
+      applyDownloadAvailability(downloadBtn);
+      applyDownloadAvailability(gateDownloadBtn);
+      renderDesktopStatus();
+      renderAccount();
+      renderServers();
+    }
+
+    langSelect.value = lang;
+    langSelect.addEventListener("change", () => setLang(langSelect.value));
+    applyI18n();
 
     const wsProtocol = location.protocol === "https:" ? "wss:" : "ws:";
     const ws = new WebSocket(`${wsProtocol}//${location.host}`);
