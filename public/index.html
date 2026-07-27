@@ -65,7 +65,8 @@
     display: flex; align-items: center; justify-content: center; cursor: pointer;
   }
   .lang-btn:hover { background: rgba(255,255,255,0.08); filter: none; }
-  .lang-flag { font-size: 1.35rem; line-height: 1; }
+  .lang-flag { display: inline-flex; line-height: 1; }
+  .lang-flag svg { width: 1.35rem; height: auto; display: block; border-radius: 2px; }
   .lang-menu {
     display: none; position: absolute; top: calc(100% + 0.4rem); right: 0; z-index: 20;
     background: rgba(38,38,46,0.9); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%);
@@ -77,7 +78,7 @@
     display: flex; align-items: center; gap: 0.5rem; padding: 0.55rem 0.9rem; font-size: 0.82rem; cursor: pointer; white-space: nowrap;
   }
   .lang-menu .lang-item:hover { background: rgba(255,255,255,0.08); }
-  .lang-menu .lang-item .lang-flag { font-size: 1.1rem; }
+  .lang-menu .lang-item .lang-flag svg { width: 1.1rem; }
   #accountStatus { font-size: 0.82rem; color: #ccc; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.4rem; }
   .account-face { width: 1.35rem; height: 1.35rem; border-radius: 4px; image-rendering: pixelated; display: block; }
   .info-icon {
@@ -671,9 +672,15 @@
     const slotPickerClose = document.getElementById("slotPickerClose");
     const slotPickerList = document.getElementById("slotPickerList");
     const toastContainer = document.getElementById("toastContainer");
+    // Flag glyphs are drawn as inline SVG rather than emoji — Windows' emoji font has
+    // no regional-indicator flag glyphs and falls back to showing "KR"/"US" as text.
+    const FLAG_SVG = {
+      ko: '<svg viewBox="0 0 60 40" xmlns="http://www.w3.org/2000/svg"><rect width="60" height="40" fill="#fff"/><g transform="translate(30,20)"><circle r="8" fill="#fff"/><path d="M0,-8 A4,4 0 0,1 0,0 A4,4 0 0,0 0,8 A8,8 0 0,1 0,-8 Z" fill="#cd2e3a"/><path d="M0,8 A4,4 0 0,1 0,0 A4,4 0 0,0 0,-8 A8,8 0 0,1 0,8 Z" fill="#0047a0"/></g><g fill="#000"><g transform="translate(7,5)"><rect width="6" height="1"/><rect width="6" height="1" y="2"/><rect width="6" height="1" y="4"/></g><g transform="translate(47,5)"><rect width="2.6" height="1"/><rect width="2.6" height="1" x="3.4"/><rect width="6" height="1" y="2"/><rect width="2.6" height="1" y="4"/><rect width="2.6" height="1" x="3.4" y="4"/></g><g transform="translate(7,34)"><rect width="2.6" height="1"/><rect width="2.6" height="1" x="3.4"/><rect width="2.6" height="1" y="2"/><rect width="2.6" height="1" x="3.4" y="2"/><rect width="6" height="1" y="4"/></g><g transform="translate(47,34)"><rect width="6" height="1"/><rect width="2.6" height="1" y="2"/><rect width="2.6" height="1" x="3.4" y="2"/><rect width="2.6" height="1" y="4"/><rect width="2.6" height="1" x="3.4" y="4"/></g></g></svg>',
+      en: '<svg viewBox="0 0 60 40" xmlns="http://www.w3.org/2000/svg"><rect width="60" height="40" fill="#B22234"/><g fill="#fff"><rect y="3.08" width="60" height="3.08"/><rect y="9.23" width="60" height="3.08"/><rect y="15.38" width="60" height="3.08"/><rect y="21.54" width="60" height="3.08"/><rect y="27.69" width="60" height="3.08"/><rect y="33.85" width="60" height="3.08"/></g><rect width="24" height="21.54" fill="#3C3B6E"/><g fill="#fff"><circle cx="4" cy="3.5" r="0.9"/><circle cx="10" cy="3.5" r="0.9"/><circle cx="16" cy="3.5" r="0.9"/><circle cx="7" cy="7.5" r="0.9"/><circle cx="13" cy="7.5" r="0.9"/><circle cx="20" cy="7.5" r="0.9"/><circle cx="4" cy="11.5" r="0.9"/><circle cx="10" cy="11.5" r="0.9"/><circle cx="16" cy="11.5" r="0.9"/><circle cx="7" cy="15.5" r="0.9"/><circle cx="13" cy="15.5" r="0.9"/><circle cx="20" cy="15.5" r="0.9"/><circle cx="4" cy="19" r="0.9"/><circle cx="10" cy="19" r="0.9"/><circle cx="16" cy="19" r="0.9"/></g></svg>',
+    };
     const LANG_META = {
-      ko: { flag: "🇰🇷", label: "한국어" },
-      en: { flag: "🇺🇸", label: "English" },
+      ko: { label: "한국어" },
+      en: { label: "English" },
     };
     const langPicker = document.getElementById("langPicker");
     const langBtn = document.getElementById("langBtn");
@@ -681,11 +688,11 @@
     const langMenu = document.getElementById("langMenu");
 
     function renderLangPicker() {
-      langFlag.textContent = LANG_META[lang].flag;
+      langFlag.innerHTML = FLAG_SVG[lang];
       langMenu.innerHTML = Object.keys(LANG_META)
         .filter((code) => code !== lang)
         .map((code) =>
-          '<div class="lang-item" data-lang="' + code + '"><span class="lang-flag">' + LANG_META[code].flag + '</span>' + LANG_META[code].label + '</div>'
+          '<div class="lang-item" data-lang="' + code + '"><span class="lang-flag">' + FLAG_SVG[code] + '</span>' + LANG_META[code].label + '</div>'
         ).join("");
       langMenu.querySelectorAll(".lang-item").forEach((item) => {
         item.addEventListener("click", () => {
