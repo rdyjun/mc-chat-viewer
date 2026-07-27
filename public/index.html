@@ -29,13 +29,13 @@
 <style>
   :root {
     --accent: #9b5de5; --accent-text: #fff;
-    --glass-bg: rgba(255,255,255,0.04); --glass-bg-strong: rgba(255,255,255,0.07);
+    --glass-bg-strong: rgba(255,255,255,0.07);
     --glass-border: rgba(255,255,255,0.32); --glass-shadow: 0 14px 40px rgba(0,0,0,0.5);
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; }
   body {
-    font-family: system-ui, sans-serif; color: #f0f0f3; margin: 0; padding: 2rem;
+    font-family: system-ui, sans-serif; color: #f0f0f3; margin: 0; padding: 0.75rem 2rem 2rem;
     background: #16161c;
     background-attachment: fixed;
     display: flex; flex-direction: column;
@@ -44,9 +44,7 @@
   h2 { font-size: 0.95rem; color: #d8d8e0; margin: 0 0 0.5rem; }
   header.appHeader {
     display: flex; align-items: center; gap: 1.5rem; margin-bottom: 1.5rem; flex-shrink: 0;
-    background: var(--glass-bg); backdrop-filter: blur(22px) saturate(160%); -webkit-backdrop-filter: blur(22px) saturate(160%);
-    border-radius: 14px; padding: 0.9rem 1.5rem;
-    box-shadow: var(--glass-shadow);
+    padding: 0.9rem 0 1.4rem; border-bottom: 1px solid rgba(255,255,255,0.08);
   }
   .logo-wrap { height: 2.3rem; overflow: hidden; display: flex; align-items: center; cursor: pointer; }
   .logo-wrap img { height: 9rem; width: auto; object-fit: cover; object-position: center; }
@@ -92,10 +90,9 @@
     border: 1px solid var(--glass-border); border-radius: 16px; padding: 1.75rem; width: 22rem; max-width: 90vw; position: relative;
     box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,0.1);
   }
-  .modal h2 { margin-bottom: 1rem; }
+  .modal h2 { font-size: 1.6rem; font-weight: 700; color: #fff; margin-bottom: 1rem; }
   .login-modal-reason {
-    font-size: 0.8rem; color: #c6c6d0; background: var(--glass-bg-strong); border: 1px solid var(--glass-border);
-    border-radius: 8px; padding: 0.7rem 0.9rem; margin: 0 0 1.1rem; line-height: 1.4;
+    font-size: 0.8rem; color: #c6c6d0; margin: 0 0 1.1rem; line-height: 1.4;
   }
   .modal-close { position: absolute; top: 0.9rem; right: 0.9rem; background: none; padding: 0.2rem 0.5rem; font-weight: normal; color: #999; }
   .modal-close:hover { color: #eee; }
@@ -107,9 +104,7 @@
   .view { display: none; }
   .view.active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
   .hero {
-    padding: 3.5rem 2rem 4rem; text-align: center; border-radius: 18px; margin-bottom: 1.5rem;
-    background: var(--glass-bg); backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%);
-    box-shadow: var(--glass-shadow);
+    padding: 3.5rem 2rem 4rem; text-align: center; margin-bottom: 1.5rem;
   }
   .hero h1 { font-size: 1.6rem; margin-bottom: 0.6rem; }
   .hero p { color: #b9b9c4; font-size: 0.95rem; margin-bottom: 1.8rem; }
@@ -127,9 +122,7 @@
   .top-servers { display: flex; flex-direction: column; gap: 0.6rem; }
   .top-servers .rank-row {
     display: flex; align-items: center; gap: 0.75rem; border-radius: 10px; padding: 0.75rem 1rem;
-    background: var(--glass-bg);
-    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-    box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.08);
   }
   .top-servers .rank-num { font-weight: bold; font-size: 1rem; color: var(--accent); width: 1.4rem; text-align: center; }
   .top-servers .rank-info { display: flex; flex-direction: column; gap: 0.25rem; }
@@ -143,12 +136,10 @@
   .server-grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.75rem; }
   .server-grid-view .server-card {
     border-radius: 12px; padding: 1.1rem; display: flex; flex-direction: column; gap: 0.6rem;
-    background: var(--glass-bg);
-    backdrop-filter: blur(16px) saturate(150%); -webkit-backdrop-filter: blur(16px) saturate(150%);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
-    transition: transform 0.15s, background 0.15s;
+    border: 1px solid rgba(255,255,255,0.08);
+    transition: transform 0.15s, border-color 0.15s;
   }
-  .server-grid-view .server-card:hover { transform: translateY(-2px); background: var(--glass-bg-strong); }
+  .server-grid-view .server-card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.2); }
   .server-grid-view .server-card .name { font-weight: bold; font-size: 0.95rem; }
   .server-grid-view .server-card .status { font-size: 0.8rem; color: #9ad; }
   .server-grid-view .empty { color: #888; font-size: 0.85rem; }
@@ -162,9 +153,15 @@
   .layout { display: flex; gap: 0; align-items: stretch; flex: 1; min-height: 0; }
   .layout-resizer {
     width: 6px; flex-shrink: 0; margin: 0 0.9rem; cursor: col-resize; border-radius: 4px;
-    background: transparent; transition: background 0.15s;
+    background: transparent; transition: background 0.15s; position: relative;
+  }
+  .layout-resizer::before {
+    content: ""; position: absolute; top: 50%; left: 1px; width: 1px; height: 24px;
+    background: rgba(255,255,255,0.18); box-shadow: 4px 0 0 rgba(255,255,255,0.18);
+    transform: translateY(-50%); transition: opacity 0.15s;
   }
   .layout-resizer:hover, .layout-resizer.dragging { background: var(--accent); }
+  .layout-resizer:hover::before, .layout-resizer.dragging::before { opacity: 0; }
   .mode-toggle { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-shrink: 0; }
   .mode-toggle-btn {
     flex: 1; text-align: center; background: var(--glass-bg-strong); color: #ccc;
@@ -182,10 +179,7 @@
     100% { background-position: -200% 0; }
   }
   .panel {
-    border-radius: 14px; padding: 1.35rem;
-    background: var(--glass-bg);
-    backdrop-filter: blur(22px) saturate(160%); -webkit-backdrop-filter: blur(22px) saturate(160%);
-    box-shadow: var(--glass-shadow);
+    padding: 1.35rem;
   }
   .sidebar { width: 280px; flex-shrink: 0; display: flex; flex-direction: column; gap: 1.25rem; }
   input {
@@ -240,17 +234,15 @@
   .chat-grid[data-layout="4"] { grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; }
   .chat-slot {
     border-radius: 12px; padding: 1rem; display: flex; flex-direction: column; gap: 0.6rem; min-width: 0; min-height: 0;
-    background: rgba(0,0,0,0.22);
-    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-    box-shadow: 0 10px 28px rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.08);
   }
   .chat-slot.drag-hint {
     outline: 2px dashed var(--accent); outline-offset: -2px;
     animation: chat-slot-drop-hint 0.8s ease-in-out infinite;
   }
   @keyframes chat-slot-drop-hint {
-    0%, 100% { background: rgba(0,0,0,0.22); }
-    50% { background: rgba(155,93,229,0.22); }
+    0%, 100% { background: transparent; }
+    50% { background: rgba(155,93,229,0.14); }
   }
   .slot-header { display: flex; gap: 0.5rem; align-items: center; }
   .slot-connect-btn { flex-shrink: 0; padding: 0.4rem 0.7rem; font-size: 0.78rem; }
@@ -347,7 +339,7 @@
       <div class="lang-menu" id="langMenu"></div>
     </div>
     <div class="accountArea">
-      <span id="accountStatus" data-i18n="accountChecking">확인 중...</span>
+      <span id="accountStatus"></span>
       <button type="button" id="loginTriggerBtn" style="display:none" data-i18n="loginBtn">로그인</button>
     </div>
   </header>
@@ -517,10 +509,7 @@
         pingChecking: "확인 중...",
         pingOnline: "🟢 {online}/{max}명",
         pingOffline: "🔴 오프라인",
-        accountChecking: "확인 중...",
-        accountLoggingIn: "로그인 진행 중...",
         accountLoginFailed: "로그인 실패",
-        accountNeedsLogin: "서버 접속 전, 로그인이 필요합니다.",
         loginNeededForServers: "로그인 후 서버 목록을 이용할 수 있어요.",
         toastServerSelected: "서버가 선택되었습니다. 연결 버튼을 눌러주세요.",
         alertSelectServerFirst: "먼저 이 칸에 서버를 선택하세요.",
@@ -578,10 +567,7 @@
         pingChecking: "Checking...",
         pingOnline: "🟢 {online}/{max} players",
         pingOffline: "🔴 Offline",
-        accountChecking: "Checking...",
-        accountLoggingIn: "Logging in...",
         accountLoginFailed: "Login failed",
-        accountNeedsLogin: "You need to log in before connecting to a server.",
         loginNeededForServers: "Log in to use the server list.",
         toastServerSelected: "Server selected. Click Connect to continue.",
         alertSelectServerFirst: "Please select a server for this slot first.",
@@ -994,13 +980,10 @@
         loginTriggerBtn.style.display = "none";
         closeLoginModal();
       } else if (account.status === "logging-in") {
-        accountStatusEl.textContent = t("accountLoggingIn");
+        accountStatusEl.textContent = "";
         loginTriggerBtn.style.display = "none";
-      } else if (account.status === "error") {
-        accountStatusEl.textContent = t("accountNeedsLogin");
-        loginTriggerBtn.style.display = "";
       } else {
-        accountStatusEl.textContent = t("accountNeedsLogin");
+        accountStatusEl.textContent = "";
         loginTriggerBtn.style.display = "";
       }
       loadRecentServers();
