@@ -282,11 +282,11 @@
   .sys-tag { font-style: normal; color: var(--accent); margin-right: 0.35rem; }
   .time { color: #888; font-size: 0.8rem; margin-right: 0.5rem; }
   .trial-warning {
-    display: none; align-items: center; gap: 0.5rem; border-radius: 10px; padding: 0.85rem 1.1rem; font-size: 0.82rem; margin-bottom: 1.25rem;
+    display: none; border-radius: 10px; padding: 0.85rem 1.1rem; font-size: 0.82rem; margin-bottom: 1.25rem; line-height: 1.5;
     background: rgba(169,124,31,0.18); border: 1px solid rgba(169,124,31,0.5); color: #ffd98a;
     backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
   }
-  .trial-warning.show { display: flex; }
+  .trial-warning.show { display: block; }
 
   /* Play-tab desktop-client gate: full-screen scrim + glass modal, distinct from the trial warning above */
   .gate-backdrop {
