@@ -13,7 +13,8 @@
     en: { windows: "⬇ Download for Windows", other: "🚧 Other OS support coming soon" },
   };
   function applyDownloadAvailability(el) {
-    var lang = localStorage.getItem("lang") || "ko";
+    var lang = localStorage.getItem("lang") ||
+      ((navigator.language || "").toLowerCase().startsWith("ko") ? "ko" : "en");
     var s = DOWNLOAD_STRINGS[lang] || DOWNLOAD_STRINGS.ko;
     if (IS_WINDOWS) {
       el.textContent = s.windows;
@@ -592,7 +593,8 @@
       },
     };
 
-    let lang = localStorage.getItem("lang") || "ko";
+    let lang = localStorage.getItem("lang") ||
+      ((navigator.language || "").toLowerCase().startsWith("ko") ? "ko" : "en");
 
     function t(key, vars) {
       let text = (translations[lang] && translations[lang][key]) || translations.ko[key] || key;
