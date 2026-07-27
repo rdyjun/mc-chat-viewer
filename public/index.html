@@ -58,8 +58,8 @@
   }
   .tabNav button:hover { color: #eee; }
   .tabNav button.active { color: #fff; border-bottom-color: var(--accent); }
-  .accountArea { margin-left: auto; display: flex; align-items: center; gap: 0.6rem; }
-  .lang-picker { position: relative; }
+  .accountArea { display: flex; align-items: center; gap: 0.6rem; }
+  .lang-picker { position: relative; margin-left: auto; }
   .lang-btn {
     background: none; border: none; box-shadow: none; padding: 0.2rem; border-radius: 8px;
     display: flex; align-items: center; justify-content: center; cursor: pointer;
@@ -356,13 +356,13 @@
       <button type="button" id="tabListBtn" data-i18n="tabPlay">플레이</button>
       <button type="button" id="tabServersBtn" data-i18n="serverListTitle">서버 목록</button>
     </nav>
-    <div class="accountArea">
-      <span id="accountStatus" data-i18n="accountChecking">확인 중...</span>
-      <button type="button" id="loginTriggerBtn" style="display:none" data-i18n="loginBtn">로그인</button>
-    </div>
     <div class="lang-picker" id="langPicker">
       <button type="button" class="lang-btn" id="langBtn"><span class="lang-flag" id="langFlag"></span></button>
       <div class="lang-menu" id="langMenu"></div>
+    </div>
+    <div class="accountArea">
+      <span id="accountStatus" data-i18n="accountChecking">확인 중...</span>
+      <button type="button" id="loginTriggerBtn" style="display:none" data-i18n="loginBtn">로그인</button>
     </div>
   </header>
 
@@ -675,7 +675,7 @@
     // Flag glyphs are drawn as inline SVG rather than emoji — Windows' emoji font has
     // no regional-indicator flag glyphs and falls back to showing "KR"/"US" as text.
     const FLAG_SVG = {
-      ko: '<svg viewBox="0 0 60 40" xmlns="http://www.w3.org/2000/svg"><rect width="60" height="40" fill="#fff"/><g transform="translate(30,20)"><circle r="8" fill="#fff"/><path d="M0,-8 A4,4 0 0,1 0,0 A4,4 0 0,0 0,8 A8,8 0 0,1 0,-8 Z" fill="#cd2e3a"/><path d="M0,8 A4,4 0 0,1 0,0 A4,4 0 0,0 0,-8 A8,8 0 0,1 0,8 Z" fill="#0047a0"/></g><g fill="#000"><g transform="translate(7,5)"><rect width="6" height="1"/><rect width="6" height="1" y="2"/><rect width="6" height="1" y="4"/></g><g transform="translate(47,5)"><rect width="2.6" height="1"/><rect width="2.6" height="1" x="3.4"/><rect width="6" height="1" y="2"/><rect width="2.6" height="1" y="4"/><rect width="2.6" height="1" x="3.4" y="4"/></g><g transform="translate(7,34)"><rect width="2.6" height="1"/><rect width="2.6" height="1" x="3.4"/><rect width="2.6" height="1" y="2"/><rect width="2.6" height="1" x="3.4" y="2"/><rect width="6" height="1" y="4"/></g><g transform="translate(47,34)"><rect width="6" height="1"/><rect width="2.6" height="1" y="2"/><rect width="2.6" height="1" x="3.4" y="2"/><rect width="2.6" height="1" y="4"/><rect width="2.6" height="1" x="3.4" y="4"/></g></g></svg>',
+      ko: '<svg viewBox="0 0 90 60" xmlns="http://www.w3.org/2000/svg"><rect width="90" height="60" fill="#fff"/><g transform="translate(45,30)"><path d="M0,-13 A6.5,6.5 0 0,1 0,0 A6.5,6.5 0 0,0 0,13 A13,13 0 0,0 0,-13 Z" fill="#C60C30"/><path d="M0,13 A6.5,6.5 0 0,1 0,0 A6.5,6.5 0 0,0 0,-13 A13,13 0 0,0 0,13 Z" fill="#003478"/></g><g fill="#000"><g transform="translate(7,8)"><rect width="16" height="2.2"/><rect width="16" height="2.2" y="4.4"/><rect width="16" height="2.2" y="8.8"/></g><g transform="translate(67,8)"><rect width="6.8" height="2.2"/><rect width="6.8" height="2.2" x="9.2"/><rect width="16" height="2.2" y="4.4"/><rect width="6.8" height="2.2" y="8.8"/><rect width="6.8" height="2.2" x="9.2" y="8.8"/></g><g transform="translate(7,41)"><rect width="16" height="2.2"/><rect width="6.8" height="2.2" y="4.4"/><rect width="6.8" height="2.2" x="9.2" y="4.4"/><rect width="16" height="2.2" y="8.8"/></g><g transform="translate(67,41)"><rect width="6.8" height="2.2"/><rect width="6.8" height="2.2" x="9.2"/><rect width="6.8" height="2.2" y="4.4"/><rect width="6.8" height="2.2" x="9.2" y="4.4"/><rect width="6.8" height="2.2" y="8.8"/><rect width="6.8" height="2.2" x="9.2" y="8.8"/></g></g></svg>',
       en: '<svg viewBox="0 0 60 40" xmlns="http://www.w3.org/2000/svg"><rect width="60" height="40" fill="#B22234"/><g fill="#fff"><rect y="3.08" width="60" height="3.08"/><rect y="9.23" width="60" height="3.08"/><rect y="15.38" width="60" height="3.08"/><rect y="21.54" width="60" height="3.08"/><rect y="27.69" width="60" height="3.08"/><rect y="33.85" width="60" height="3.08"/></g><rect width="24" height="21.54" fill="#3C3B6E"/><g fill="#fff"><circle cx="4" cy="3.5" r="0.9"/><circle cx="10" cy="3.5" r="0.9"/><circle cx="16" cy="3.5" r="0.9"/><circle cx="7" cy="7.5" r="0.9"/><circle cx="13" cy="7.5" r="0.9"/><circle cx="20" cy="7.5" r="0.9"/><circle cx="4" cy="11.5" r="0.9"/><circle cx="10" cy="11.5" r="0.9"/><circle cx="16" cy="11.5" r="0.9"/><circle cx="7" cy="15.5" r="0.9"/><circle cx="13" cy="15.5" r="0.9"/><circle cx="20" cy="15.5" r="0.9"/><circle cx="4" cy="19" r="0.9"/><circle cx="10" cy="19" r="0.9"/><circle cx="16" cy="19" r="0.9"/></g></svg>',
     };
     const LANG_META = {
