@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: ${DB_USER:-mineportal}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-mineportal}
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-mineportal} -d ${DB_NAME:-mineportal}"]
       interval: 5s
