@@ -1,12 +1,10 @@
 package com.mineportal.server.db;
 
 import jakarta.annotation.PostConstruct;
-import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Optional;
 
 /** Schema and queries ported 1:1 from the old Node backend's src/db.ts. */
 @Repository
@@ -37,8 +35,25 @@ public class ServerRepository {
                 CREATE TABLE IF NOT EXISTS user_servers (
                   user_id TEXT NOT NULL REFERENCES users(id),
                   server_id TEXT NOT NULL REFERENCES servers(id),
+                  host TEXT,
+                  port INTEGER,
                   PRIMARY KEY (user_id, server_id)
                 )
+                """);
+        // Upgrade path for installs created before host/port were added to this table.
+        jdbc.execute("ALTER TABLE user_servers ADD COLUMN IF NOT EXISTS host TEXT");
+        jdbc.execute("ALTER TABLE user_servers ADD COLUMN IF NOT EXISTS port INTEGER");
+        jdbc.execute("""
+                UPDATE user_servers us SET host = s.host, port = s.port
+                FROM servers s WHERE us.server_id = s.id AND us.host IS NULL
+                """);
+        jdbc.execute("ALTER TABLE user_servers ALTER COLUMN host SET NOT NULL");
+        jdbc.execute("ALTER TABLE user_servers ALTER COLUMN port SET NOT NULL");
+        // Enforces "one user can't own the same address twice" at the DB level instead of a
+        // check-then-insert race in application code.
+        jdbc.execute("""
+                CREATE UNIQUE INDEX IF NOT EXISTS user_servers_addr_uq
+                ON user_servers (user_id, LOWER(host), port)
                 """);
         jdbc.execute("""
                 CREATE TABLE IF NOT EXISTS connection_logs (
@@ -60,8 +75,20 @@ public class ServerRepository {
         jdbc.update("INSERT INTO servers (id, host, port, version) VALUES (?, ?, ?, ?)", id, host, port, version);
     }
 
-    public void linkUserServer(String userId, String serverId) {
-        jdbc.update("INSERT INTO user_servers (user_id, server_id) VALUES (?, ?) ON CONFLICT (user_id, server_id) DO NOTHING", userId, serverId);
+    /** Atomically links a server to a user, rejecting a duplicate (user_id, host, port) address
+     * via the DB-level unique index instead of a separate check-then-insert query.
+     * @return true if the link was created, false if this user already owns that address. */
+    public boolean linkUserServer(String userId, String serverId, String host, int port) {
+        int rows = jdbc.update("""
+                INSERT INTO user_servers (user_id, server_id, host, port) VALUES (?, ?, ?, ?)
+                ON CONFLICT (user_id, (LOWER(host)), port) DO NOTHING
+                """,
+                userId, serverId, host, port);
+        return rows > 0;
+    }
+
+    public void deleteServerRow(String serverId) {
+        jdbc.update("DELETE FROM servers WHERE id = ?", serverId);
     }
 
     public List<ServerRow> listServerRowsForUser(String userId) {
@@ -73,23 +100,6 @@ public class ServerRepository {
                 """,
                 (rs, rowNum) -> new ServerRow(rs.getString("id"), rs.getString("host"), rs.getInt("port"), rs.getString("version")),
                 userId);
-    }
-
-    /** Case-insensitive host match within one user's own server list — used to reject duplicate adds. */
-    public Optional<ServerRow> findUserServerByAddress(String userId, String host, int port) {
-        try {
-            ServerRow row = jdbc.queryForObject("""
-                    SELECT s.id, s.host, s.port, s.version
-                    FROM servers s
-                    JOIN user_servers us ON us.server_id = s.id
-                    WHERE us.user_id = ? AND LOWER(s.host) = LOWER(?) AND s.port = ?
-                    """,
-                    (rs, rowNum) -> new ServerRow(rs.getString("id"), rs.getString("host"), rs.getInt("port"), rs.getString("version")),
-                    userId, host, port);
-            return Optional.ofNullable(row);
-        } catch (EmptyResultDataAccessException e) {
-            return Optional.empty();
-        }
     }
 
     public List<ServerRow> listAllServerRows() {

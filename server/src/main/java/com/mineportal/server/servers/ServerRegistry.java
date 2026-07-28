@@ -33,12 +33,12 @@ public class ServerRegistry {
 
     /** Adds a server to the saved list, owned by userId. Does not connect. */
     public ServerConfig addServer(String host, int port, String version, String userId) {
-        if (repository.findUserServerByAddress(userId, host, port).isPresent()) {
-            throw new DuplicateServerException();
-        }
         String id = UUID.randomUUID().toString();
         repository.insertServerRow(id, host, port, version);
-        repository.linkUserServer(userId, id);
+        if (!repository.linkUserServer(userId, id, host, port)) {
+            repository.deleteServerRow(id);
+            throw new DuplicateServerException();
+        }
         ServerConfig server = new ServerConfig(id, host, port, version);
         servers.put(id, server);
         return server;
