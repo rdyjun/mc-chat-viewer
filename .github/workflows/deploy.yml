@@ -20,5 +20,5 @@ jobs:
             cd ~/mc-chat-viewer
             git fetch origin main
             git reset --hard origin/main
-            docker compose up -d --build
+            docker compose --env-file server/.env up -d --build
             docker image prune -f
