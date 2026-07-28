@@ -28,8 +28,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    ports:
-      - "${WEB_PORT:-3000}:${WEB_PORT:-3000}"
     volumes:
       - ./nmp-cache:/app/nmp-cache
 
