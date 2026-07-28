@@ -15,6 +15,7 @@ services:
       retries: 10
 
   app:
+    container_name: mineportal
     build:
       context: .
       dockerfile: server/Dockerfile
