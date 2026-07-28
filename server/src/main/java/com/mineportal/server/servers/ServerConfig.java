@@ -1,5 +1,8 @@
 package com.mineportal.server.servers;
 
+import com.mineportal.server.connection.ChatMessage;
+import com.mineportal.server.status.StatusEntry;
+
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;

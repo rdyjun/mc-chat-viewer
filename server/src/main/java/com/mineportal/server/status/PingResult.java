@@ -1,4 +1,4 @@
-package com.mineportal.server.ping;
+package com.mineportal.server.status;
 
 /** Mirrors the JSON shape the frontend already expects from GET /api/ping. */
 public record PingResult(

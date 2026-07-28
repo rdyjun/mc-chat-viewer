@@ -1,4 +1,4 @@
-package com.mineportal.server.mc;
+package com.mineportal.server.connection;
 
 public class NotConnectedException extends RuntimeException {
     public NotConnectedException() {

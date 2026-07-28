@@ -2,11 +2,11 @@ package com.mineportal.server.ws;
 
 import com.mineportal.server.account.AccountSessionManager;
 import com.mineportal.server.account.AccountView;
-import com.mineportal.server.servers.ChatMessage;
+import com.mineportal.server.connection.ChatMessage;
 import com.mineportal.server.servers.ServerConfig;
 import com.mineportal.server.servers.ServerRegistry;
 import com.mineportal.server.servers.ServerSummary;
-import com.mineportal.server.servers.StatusEntry;
+import com.mineportal.server.status.StatusEntry;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;

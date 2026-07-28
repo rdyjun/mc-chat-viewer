@@ -1,5 +1,8 @@
 package com.mineportal.server.servers;
 
+import com.mineportal.server.connection.ChatMessage;
+import com.mineportal.server.status.StatusEntry;
+
 import java.util.List;
 
 public record ServerDetail(String id, String host, int port, String version, String status, String phase,

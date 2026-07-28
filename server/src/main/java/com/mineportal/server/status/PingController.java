@@ -1,4 +1,4 @@
-package com.mineportal.server.ping;
+package com.mineportal.server.status;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

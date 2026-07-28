@@ -1,5 +1,6 @@
-package com.mineportal.server.ws;
+package com.mineportal.server.connection;
 
+import com.mineportal.server.ws.EventBroadcaster;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.WebSocketSession;

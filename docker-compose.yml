@@ -15,10 +15,12 @@ services:
       retries: 10
 
   app:
-    build: ./server
+    build:
+      context: .
+      dockerfile: server/Dockerfile
     restart: unless-stopped
     env_file:
-      - .env
+      - server/.env
     environment:
       DB_HOST: db
       DB_PORT: 5432

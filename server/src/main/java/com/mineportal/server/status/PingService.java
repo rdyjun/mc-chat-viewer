@@ -1,4 +1,4 @@
-package com.mineportal.server.ping;
+package com.mineportal.server.status;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;

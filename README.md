@@ -45,7 +45,7 @@ logged in at a time — logging in with a different email replaces it.
 
 ```bash
 npm install
-cp .env.example .env   # WEB_PORT only, defaults to 3000
+cp server/.env.example server/.env
 npm run dev
 ```
 

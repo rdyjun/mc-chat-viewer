@@ -40,3 +40,11 @@ tasks.named('test') {
 tasks.named('bootJar') {
     archiveFileName.set('app.jar')
 }
+
+// The web frontend lives in ../client (outside this Gradle project) so it can be built and
+// deployed independently of the server; pull it into the jar's static resources here.
+tasks.named('processResources') {
+    from('../client') {
+        into 'static'
+    }
+}

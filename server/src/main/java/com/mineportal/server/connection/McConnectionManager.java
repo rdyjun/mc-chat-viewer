@@ -1,7 +1,6 @@
-package com.mineportal.server.mc;
+package com.mineportal.server.connection;
 
 import com.mineportal.server.account.AccountState;
-import com.mineportal.server.servers.ChatMessage;
 import com.mineportal.server.servers.ServerConfig;
 import com.mineportal.server.ws.EventBroadcaster;
 import net.kyori.adventure.text.Component;

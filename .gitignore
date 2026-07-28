@@ -1,8 +1,8 @@
-node_modules/
 server/build/
 server/.gradle/
 .env
 .omc/
+.idea/
 # MinecraftAuth caches Microsoft login tokens here after login
 nmp-cache/
 *.log

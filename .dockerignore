@@ -6,4 +6,10 @@ data
 .git
 .omc
 .claude
+.idea
 *.log
+desktop-client
+server/build
+server/.gradle
+server/.omc
+server/data

@@ -1,10 +1,11 @@
 FROM eclipse-temurin:17-jdk AS builder
 WORKDIR /app
-COPY gradlew ./
-COPY gradle gradle
-COPY build.gradle settings.gradle ./
+COPY server/gradlew ./
+COPY server/gradle gradle
+COPY server/build.gradle server/settings.gradle ./
 RUN chmod +x gradlew
-COPY src src
+COPY server/src src
+COPY client /client
 RUN ./gradlew bootJar --no-daemon
 
 FROM eclipse-temurin:17-jre
