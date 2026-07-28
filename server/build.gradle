@@ -25,7 +25,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
 
-    implementation 'org.xerial:sqlite-jdbc:3.47.1.0'
+    runtimeOnly 'org.postgresql:postgresql:42.7.4'
 
     // Same protocol/auth libraries desktop-client already uses and has proven.
     implementation 'org.geysermc.mcprotocollib:protocol:1.21.7-1'

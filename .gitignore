@@ -5,6 +5,4 @@ server/.gradle/
 .omc/
 # MinecraftAuth caches Microsoft login tokens here after login
 nmp-cache/
-# sqlite database (users/servers/user_servers) — persisted via docker-compose volume on deploy
-data/
 *.log

@@ -42,18 +42,18 @@ public class ServerRepository {
                 """);
         jdbc.execute("""
                 CREATE TABLE IF NOT EXISTS connection_logs (
-                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  id BIGSERIAL PRIMARY KEY,
                   server_id TEXT NOT NULL,
                   user_id TEXT NOT NULL,
                   host TEXT NOT NULL,
                   port INTEGER NOT NULL,
-                  created_at INTEGER NOT NULL
+                  created_at BIGINT NOT NULL
                 )
                 """);
     }
 
     public void upsertUser(String userId) {
-        jdbc.update("INSERT OR IGNORE INTO users (id) VALUES (?)", userId);
+        jdbc.update("INSERT INTO users (id) VALUES (?) ON CONFLICT (id) DO NOTHING", userId);
     }
 
     public void insertServerRow(String id, String host, int port, String version) {
@@ -61,7 +61,7 @@ public class ServerRepository {
     }
 
     public void linkUserServer(String userId, String serverId) {
-        jdbc.update("INSERT OR IGNORE INTO user_servers (user_id, server_id) VALUES (?, ?)", userId, serverId);
+        jdbc.update("INSERT INTO user_servers (user_id, server_id) VALUES (?, ?) ON CONFLICT (user_id, server_id) DO NOTHING", userId, serverId);
     }
 
     public List<ServerRow> listServerRowsForUser(String userId) {
