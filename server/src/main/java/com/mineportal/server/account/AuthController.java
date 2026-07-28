@@ -1,6 +1,8 @@
 package com.mineportal.server.account;
 
+import com.mineportal.server.session.SidCookieFilter;
 import com.mineportal.server.ws.EventBroadcaster;
+import jakarta.servlet.http.HttpServletResponse;
 import net.lenni0451.commons.httpclient.HttpClient;
 import net.raphimc.minecraftauth.MinecraftAuth;
 import net.raphimc.minecraftauth.step.AbstractStep;
@@ -85,15 +87,23 @@ public class AuthController {
             @RequestParam(required = false) String code,
             @RequestParam(required = false) String state,
             @RequestParam(required = false) String error,
-            @RequestParam(name = "error_description", required = false) String errorDescription
+            @RequestParam(name = "error_description", required = false) String errorDescription,
+            HttpServletResponse response
     ) {
         if (error != null) {
             return redirectTo("/?loginError=" + encode(errorDescription != null ? errorDescription : error));
         }
-        String sid = state != null ? pendingLoginStates.remove(state) : null;
-        if (sid == null || code == null) {
+        String pendingSid = state != null ? pendingLoginStates.remove(state) : null;
+        if (pendingSid == null || code == null) {
             return ResponseEntity.status(400).body("Invalid or expired login attempt. Please try signing in again.");
         }
+
+        // Rotate to a freshly generated sid right as the login attempt is confirmed real, so a
+        // sid an attacker fixed in the victim's browser beforehand can't ride along into the
+        // authenticated session (session fixation).
+        String sid = UUID.randomUUID().toString();
+        accountSessions.remove(pendingSid);
+        SidCookieFilter.issueCookie(response, sid);
 
         completeLoginAsync(sid, code);
         return redirectTo("/");

@@ -26,21 +26,36 @@ public class SidCookieFilter extends HttpFilter {
     public static final String REQUEST_ATTRIBUTE = "sid";
     private static final int MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
+    // req.isSecure() isn't trustworthy behind this deployment's nginx, which doesn't forward
+    // X-Forwarded-Proto — so whether the cookie gets the Secure flag is controlled explicitly
+    // instead. Prod sets COOKIE_SECURE=true; local http dev needs it false or the browser drops
+    // the Set-Cookie entirely.
+    private static final boolean COOKIE_SECURE = Boolean.parseBoolean(
+            System.getenv().getOrDefault("COOKIE_SECURE", "true"));
+
     @Override
     protected void doFilter(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
             throws IOException, ServletException {
         String sid = readCookie(req);
         if (sid == null) {
             sid = UUID.randomUUID().toString();
-            Cookie cookie = new Cookie(COOKIE_NAME, sid);
-            cookie.setHttpOnly(true);
-            cookie.setPath("/");
-            cookie.setMaxAge(MAX_AGE_SECONDS);
-            cookie.setSecure(req.isSecure());
-            res.addCookie(cookie);
+            issueCookie(res, sid);
         }
         req.setAttribute(REQUEST_ATTRIBUTE, sid);
         chain.doFilter(req, res);
+    }
+
+    /** Also used by AuthController to rotate the cookie to a fresh sid right as a login attempt
+     * starts, so a pre-login sid an attacker fixed in the victim's browser can't ride along into
+     * an authenticated session (session fixation). */
+    public static void issueCookie(HttpServletResponse res, String sid) {
+        Cookie cookie = new Cookie(COOKIE_NAME, sid);
+        cookie.setHttpOnly(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(MAX_AGE_SECONDS);
+        cookie.setSecure(COOKIE_SECURE);
+        cookie.setAttribute("SameSite", "Lax");
+        res.addCookie(cookie);
     }
 
     private String readCookie(HttpServletRequest req) {

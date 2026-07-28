@@ -14,4 +14,8 @@ public class AccountSessionManager {
         return sessions.computeIfAbsent(sid, k -> new AccountState());
     }
 
+    public void remove(String sid) {
+        sessions.remove(sid);
+    }
+
 }
