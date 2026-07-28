@@ -19,6 +19,7 @@ import org.geysermc.mcprotocollib.protocol.MinecraftProtocol;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundLoginPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundPlayerChatPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundSystemChatPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundChatCommandPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundChatPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundChatSessionUpdatePacket;
 import org.springframework.stereotype.Service;
@@ -129,6 +130,13 @@ public class McConnectionManager {
     public void sendChat(String serverId, String message) {
         ClientSession session = sessions.get(serverId);
         if (session == null || !session.isConnected()) throw new NotConnectedException();
+
+        // "/"로 시작하면 일반 채팅이 아니라 명령어다 — ServerboundChatPacket으로 보내면
+        // 서버가 그냥 평문 채팅으로 취급해서 명령어가 실행되지 않는다.
+        if (message.startsWith("/")) {
+            session.send(new ServerboundChatCommandPacket(message.substring(1)));
+            return;
+        }
 
         ChatSigner signer = chatSigners.get(serverId);
         long timestampMs = Instant.now().toEpochMilli();

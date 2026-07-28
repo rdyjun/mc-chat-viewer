@@ -30,8 +30,8 @@ public class AuthController {
     private static final String MS_CLIENT_SECRET = System.getenv().getOrDefault("MS_CLIENT_SECRET", "");
     private static final String MS_REDIRECT_URI = System.getenv().getOrDefault("MS_REDIRECT_URI", "");
 
-    // Same tenant/endpoint the existing Azure app registration is already configured for
-    // (matches the old Node backend's msal-node `authority: ".../consumers"` setting).
+    // 기존 Azure 앱 등록에 이미 설정되어 있는 것과 동일한 테넌트/엔드포인트를 사용한다
+    // (예전 Node 백엔드의 msal-node `authority: ".../consumers"` 설정과 일치).
     private static final AbstractStep.ApplicationDetails APPLICATION_DETAILS = new AbstractStep.ApplicationDetails(
             MS_CLIENT_ID, MicrosoftConstants.SCOPE2, MS_CLIENT_SECRET, MS_REDIRECT_URI, OAuthEnvironment.MICROSOFT_ONLINE_CONSUMERS
     );
@@ -44,9 +44,9 @@ public class AuthController {
             .regularAuthentication(MicrosoftConstants.JAVA_XSTS_RELYING_PARTY)
             .buildMinecraftJavaProfileStep(true);
 
-    // OAuth CSRF nonce -> the sid that initiated it, so the callback knows which session's
-    // login this is (the old Node backend only needed a bare Set since it had one global
-    // account; now each session gets its own AccountState).
+    // OAuth CSRF nonce -> 이를 시작한 sid로 매핑해서, 콜백이 어느 세션의 로그인 요청인지
+    // 알 수 있게 한다 (예전 Node 백엔드는 전역 계정이 하나뿐이라 단순 Set만 있으면 됐지만,
+    // 지금은 세션마다 각자의 AccountState를 가진다).
     private final Map<String, String> pendingLoginStates = new ConcurrentHashMap<>();
 
     private final AccountSessionManager accountSessions;
@@ -98,9 +98,9 @@ public class AuthController {
             return ResponseEntity.status(400).body("Invalid or expired login attempt. Please try signing in again.");
         }
 
-        // Rotate to a freshly generated sid right as the login attempt is confirmed real, so a
-        // sid an attacker fixed in the victim's browser beforehand can't ride along into the
-        // authenticated session (session fixation).
+        // 로그인 시도가 실제로 확인되는 시점에 새로 생성한 sid로 교체한다. 이렇게 하면
+        // 공격자가 미리 피해자 브라우저에 심어둔 sid가 인증된 세션까지 이어지지 못한다
+        // (세션 고정 공격 방지).
         String sid = UUID.randomUUID().toString();
         accountSessions.remove(pendingSid);
         SidCookieFilter.issueCookie(response, sid);
@@ -109,9 +109,9 @@ public class AuthController {
         return redirectTo("/");
     }
 
-    // Runs the actual Microsoft/Xbox Live/XSTS/Minecraft exchange on its own thread so the HTTP
-    // response returns immediately — the frontend picks up progress via the "account" WebSocket
-    // event, same as the old Node backend's fire-and-forget completeMicrosoftLogin().
+    // 실제 Microsoft/Xbox Live/XSTS/Minecraft 교환은 별도 스레드에서 실행해서 HTTP 응답이
+    // 즉시 반환되게 한다 — 프론트엔드는 "account" WebSocket 이벤트로 진행 상황을 받는다,
+    // 예전 Node 백엔드의 fire-and-forget completeMicrosoftLogin()과 동일한 방식.
     private void completeLoginAsync(String sid, String code) {
         AccountState state = accountSessions.get(sid);
         if ("logging-in".equals(state.status)) return;
@@ -129,6 +129,7 @@ public class AuthController {
                         session.getMcProfile().getName()
                 );
                 state.status = "logged-in";
+                broadcaster.refreshServersFor(sid);
             } catch (Exception e) {
                 state.status = "error";
                 state.error = translateAuthError(e.getMessage());
@@ -138,9 +139,9 @@ public class AuthController {
     }
 
     /**
-     * MinecraftAuth/MSAL-style errors surface as raw English exception messages. Translate the
-     * ones we actually see in practice into a plain-Korean explanation, ported from the old
-     * Node backend's account.ts translateAuthError().
+     * MinecraftAuth/MSAL 계열 오류는 영어 원문 예외 메시지 그대로 올라온다. 실제로 자주
+     * 마주치는 것들을 알기 쉬운 한국어 설명으로 변환한다. 예전 Node 백엔드의
+     * account.ts translateAuthError()를 포팅한 것.
      */
     private String translateAuthError(String message) {
         String m = message == null ? "" : message;
