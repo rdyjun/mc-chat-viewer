@@ -169,7 +169,7 @@
   }
   .mode-toggle-btn.active { background: var(--accent); color: var(--accent-text); }
   .mode-toggle-skeleton {
-    height: 2.6rem; border-radius: 8px; margin-bottom: 1rem; flex-shrink: 0;
+    flex: 1; height: 2.6rem; border-radius: 8px;
     background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.11) 50%, rgba(255,255,255,0.04) 75%);
     background-size: 200% 100%;
     animation: mode-skeleton-pulse 1.2s ease-in-out infinite;
@@ -184,6 +184,12 @@
     animation: mode-skeleton-pulse 1.2s ease-in-out infinite;
   }
   .server-list-skeleton-item { height: 3.6rem; border-radius: 10px; }
+  .server-grid-skeleton-item {
+    background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.11) 50%, rgba(255,255,255,0.04) 75%);
+    background-size: 200% 100%;
+    animation: mode-skeleton-pulse 1.2s ease-in-out infinite;
+    height: 6rem; border: none;
+  }
   .slot-server-btn.skeleton { background-image: none; pointer-events: none; }
   .panel {
     padding: 1.35rem;
@@ -418,7 +424,10 @@
   </div>
 
   <div class="view" id="listView">
-    <div class="mode-toggle-skeleton" id="modeToggleSkeleton"></div>
+    <div class="mode-toggle" id="modeToggleSkeleton">
+      <div class="mode-toggle-skeleton"></div>
+      <div class="mode-toggle-skeleton"></div>
+    </div>
     <div class="mode-toggle" id="modeToggle" style="display:none">
       <button type="button" class="mode-toggle-btn" data-mode="real" id="modeRealBtn" data-i18n="modeReal">정식 모드</button>
       <button type="button" class="mode-toggle-btn" data-mode="trial" id="modeTrialBtn" data-i18n="modeTrial">체험모드</button>
@@ -931,6 +940,10 @@
     }
 
     function renderServerGridView() {
+      if (!serversLoaded) {
+        serverGridView.innerHTML = '<div class="server-card server-grid-skeleton-item"></div>'.repeat(3);
+        return;
+      }
       serverGridView.innerHTML = servers.length
         ? servers.map((s) => {
             const canConnect = s.phase !== "active";
