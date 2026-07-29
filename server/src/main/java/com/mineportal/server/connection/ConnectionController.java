@@ -32,9 +32,9 @@ public class ConnectionController {
         this.pingService = pingService;
     }
 
-    /** The DB owner id is always the logged-in Minecraft profile id — resolved server-side from
-     * this session's own AccountState, never taken from anything the client supplies. Null
-     * means "not logged in for this browser session". */
+    /** DB의 owner id는 언제나 로그인된 마인크래프트 프로필 id다 — 서버 측에서 이 세션
+     * 고유의 AccountState로부터 계산되며, 클라이언트가 보내는 값은 절대 사용하지 않는다.
+     * null이면 "이 브라우저 세션은 로그인하지 않음"을 뜻한다. */
     private String ownerId(String sid) {
         var profile = accountSessions.get(sid).profile;
         return profile != null ? profile.id() : null;

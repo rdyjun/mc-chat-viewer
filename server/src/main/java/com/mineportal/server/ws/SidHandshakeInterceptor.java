@@ -10,8 +10,8 @@ import org.springframework.web.socket.server.HandshakeInterceptor;
 
 import java.util.Map;
 
-/** Pulls the "sid" session cookie (see SidCookieFilter) into the WebSocketSession's attributes
- * during the handshake, since the plain WebSocketHandler API has no other access to cookies. */
+/** 핸드셰이크 중에 "sid" 세션 쿠키(SidCookieFilter 참고)를 WebSocketSession의 속성으로
+ * 가져온다. 순수 WebSocketHandler API는 쿠키에 접근할 다른 방법이 없기 때문이다. */
 public class SidHandshakeInterceptor implements HandshakeInterceptor {
 
     @Override
@@ -35,7 +35,7 @@ public class SidHandshakeInterceptor implements HandshakeInterceptor {
     @Override
     public void afterHandshake(ServerHttpRequest request, ServerHttpResponse response,
                                 WebSocketHandler wsHandler, Exception exception) {
-        // no-op
+        // 아무 동작도 하지 않음
     }
 
 }

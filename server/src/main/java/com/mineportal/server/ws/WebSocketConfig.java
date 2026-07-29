@@ -10,10 +10,11 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 @EnableWebSocket
 public class WebSocketConfig implements WebSocketConfigurer {
 
-    // "*" would let any site open a WS connection and ride the visitor's "sid" cookie in the
-    // handshake (cross-site WebSocket hijacking) — WS isn't covered by the browser's CORS
-    // same-origin checks the way fetch()/XHR are, so this allowlist is the only thing enforcing
-    // it. Defaults to local dev's own origin; prod sets WS_ALLOWED_ORIGINS to the real domain(s).
+    // "*"로 두면 어떤 사이트든 WS 연결을 열어 핸드셰이크에 방문자의 "sid" 쿠키를 실어
+    // 보낼 수 있게 된다(크로스 사이트 WebSocket 하이재킹) — WS는 fetch()/XHR과 달리
+    // 브라우저의 CORS 동일 출처 검사 대상이 아니므로, 이 허용 목록이 유일한 방어선이다.
+    // 기본값은 로컬 개발 환경 자신의 출처이며, 운영 환경은 WS_ALLOWED_ORIGINS에 실제
+    // 도메인(들)을 설정한다.
     private static final String[] ALLOWED_ORIGINS = System.getenv()
             .getOrDefault("WS_ALLOWED_ORIGINS", "http://localhost:3000")
             .split(",");

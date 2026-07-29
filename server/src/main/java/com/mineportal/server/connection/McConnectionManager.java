@@ -110,6 +110,11 @@ public class McConnectionManager {
                     server.connected = true;
                     broadcaster.setStatus(server, "connected", true);
                 }
+                // 서버가 번역 키를 그대로 보내는 경우가 있다("multiplayer.player.joined",
+                // "chat.disabled.invalid_command_signature" 등) — Adventure의
+                // PlainTextComponentSerializer는 번역을 해석하지 못해 키 원문을 그대로
+                // 반환하므로, 이런 미해석 키는 사용자에게 노출하지 않고 무시한다.
+                if (isRawTranslationKey(text)) return;
                 broadcaster.chatReceived(server, new ChatMessage(accountName, text, System.currentTimeMillis()));
             }
 
@@ -125,6 +130,16 @@ public class McConnectionManager {
 
         sessions.put(server.id, client);
         client.connect();
+    }
+
+    /** 주어진 서버 id의 살아있는 연결을 강제로 끊는다 — 브라우저의 마지막 탭이 닫혔을 때
+     * 좀비로 남을 MCProtocolLib 연결을 정리하기 위해 사용된다. 실제 정리(맵에서 제거,
+     * phase/connected 갱신, 브로드캐스트)는 위 disconnected() 콜백이 처리한다. */
+    public void disconnect(String serverId) {
+        ClientSession session = sessions.get(serverId);
+        if (session != null) {
+            session.disconnect("사용자 세션이 종료되어 연결을 닫았어요");
+        }
     }
 
     public void sendChat(String serverId, String message) {
@@ -149,6 +164,12 @@ public class McConnectionManager {
 
     private static String plain(Component component) {
         return component == null ? "" : PLAIN.serialize(component);
+    }
+
+    /** "multiplayer.player.joined", "chat.disabled.invalid_command_signature"처럼
+     * 점(.)으로 구분된 소문자 식별자만으로 이뤄진, 해석되지 않은 번역 키 형태인지 판별한다. */
+    private static boolean isRawTranslationKey(String text) {
+        return text.matches("[a-z0-9_]+(\\.[a-z0-9_]+)+");
     }
 
     /** Mojang이 발급한 세션별 RSA 키로 채팅 메시지를 서명한다 — enforce-secure-profile=true인

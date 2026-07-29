@@ -13,7 +13,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-/** In-memory registry of ServerConfig, backed by ServerRepository. Ported from src/servers.ts. */
+/** ServerRepository를 기반으로 하는 ServerConfig의 인메모리 레지스트리. src/servers.ts를 포팅한 것. */
 @Component
 public class ServerRegistry {
 
@@ -31,7 +31,7 @@ public class ServerRegistry {
         }
     }
 
-    /** Adds a server to the saved list, owned by userId. Does not connect. */
+    /** userId가 소유하는 서버를 저장 목록에 추가한다. 실제로 연결하지는 않는다. */
     public ServerConfig addServer(String host, int port, String version, String userId) {
         String id = UUID.randomUUID().toString();
         repository.insertServerRow(id, host, port, version);
@@ -44,7 +44,7 @@ public class ServerRegistry {
         return server;
     }
 
-    /** Only the servers userId has added — the DB's user_servers mapping is the source of truth for ownership. */
+    /** userId가 추가한 서버만 반환한다 — 소유권에 대한 신뢰할 수 있는 근거는 DB의 user_servers 매핑이다. */
     public List<ServerConfig> listServers(String userId) {
         return repository.listServerRowsForUser(userId).stream()
                 .map(row -> servers.get(row.id()))

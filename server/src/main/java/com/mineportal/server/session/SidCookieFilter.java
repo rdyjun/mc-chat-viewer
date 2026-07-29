@@ -12,12 +12,12 @@ import java.io.IOException;
 import java.util.UUID;
 
 /**
- * Issues an opaque random session id ("sid") cookie to every visitor on first request. This
- * replaces the old Node backend's "uid" cookie, which held the user's Minecraft profile id
- * directly and was trusted as-is (forgeable — anyone could set document.cookie to someone
- * else's id and see their server list). "sid" is never itself an identity claim: it's only a
- * key into server-held session state (see AccountSessionManager), and it is effectively
- * unguessable (128-bit random UUID), so it can't be used to impersonate another session.
+ * 방문자가 처음 요청을 보낼 때마다 불투명한 무작위 세션 id("sid") 쿠키를 발급한다. 이는
+ * 예전 Node 백엔드의 "uid" 쿠키를 대체하는데, 그 쿠키는 사용자의 마인크래프트 프로필 id를
+ * 그대로 담고 있어 검증 없이 신뢰되었다(위조 가능 — 누구든 document.cookie에 남의 id를
+ * 넣으면 그 사람의 서버 목록을 볼 수 있었다). "sid"는 그 자체로는 신원을 증명하지 않는다:
+ * 서버가 들고 있는 세션 상태(AccountSessionManager 참고)로 들어가는 키일 뿐이며, 사실상
+ * 추측이 불가능해서(128비트 무작위 UUID) 다른 세션을 사칭하는 데 쓰일 수 없다.
  */
 @Component
 public class SidCookieFilter extends HttpFilter {
@@ -26,10 +26,10 @@ public class SidCookieFilter extends HttpFilter {
     public static final String REQUEST_ATTRIBUTE = "sid";
     private static final int MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
-    // req.isSecure() isn't trustworthy behind this deployment's nginx, which doesn't forward
-    // X-Forwarded-Proto — so whether the cookie gets the Secure flag is controlled explicitly
-    // instead. Prod sets COOKIE_SECURE=true; local http dev needs it false or the browser drops
-    // the Set-Cookie entirely.
+    // 이 배포 환경의 nginx는 X-Forwarded-Proto를 전달하지 않기 때문에 req.isSecure()를
+    // 믿을 수 없다 — 그래서 쿠키에 Secure 플래그를 붙일지는 명시적으로 제어한다. 운영
+    // 환경은 COOKIE_SECURE=true로 설정하고, 로컬 http 개발 환경은 false로 둬야 브라우저가
+    // Set-Cookie 자체를 버리지 않는다.
     private static final boolean COOKIE_SECURE = Boolean.parseBoolean(
             System.getenv().getOrDefault("COOKIE_SECURE", "true"));
 
@@ -45,9 +45,9 @@ public class SidCookieFilter extends HttpFilter {
         chain.doFilter(req, res);
     }
 
-    /** Also used by AuthController to rotate the cookie to a fresh sid right as a login attempt
-     * starts, so a pre-login sid an attacker fixed in the victim's browser can't ride along into
-     * an authenticated session (session fixation). */
+    /** AuthController에서도 로그인 시도가 시작되는 시점에 쿠키를 새 sid로 교체할 때
+     * 사용한다. 이렇게 하면 공격자가 로그인 전에 피해자 브라우저에 심어둔 sid가 인증된
+     * 세션까지 이어지지 못한다 (세션 고정 공격 방지). */
     public static void issueCookie(HttpServletResponse res, String sid) {
         Cookie cookie = new Cookie(COOKIE_NAME, sid);
         cookie.setHttpOnly(true);

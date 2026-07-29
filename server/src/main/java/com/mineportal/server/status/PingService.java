@@ -15,18 +15,19 @@ import java.nio.charset.StandardCharsets;
 import java.util.regex.Pattern;
 
 /**
- * Server List Ping — the same lightweight, loginless status query real launchers use to show a
- * server's player count/MOTD in the multiplayer list. Ported 1:1 from the previous Node
- * implementation (src/protocol/serverPing.ts); never throws for a normal "server unreachable"
- * outcome, only for genuinely unexpected states.
+ * Server List Ping —실제 런처들이 멀티플레이 목록에서 서버의 접속자 수/MOTD를 보여줄 때
+ * 사용하는, 로그인이 필요 없는 가벼운 상태 조회와 동일한 방식이다. 예전 Node 구현
+ * (src/protocol/serverPing.ts)에서 1:1로 포팅했으며, "서버에 연결할 수 없음"이라는 정상적인
+ * 결과에 대해서는 절대 예외를 던지지 않고, 진짜로 예상치 못한 상태에서만 던진다.
  */
 @Service
 public class PingService {
 
     private static final int PING_TIMEOUT_MS = 3000;
-    // The status handshake only echoes this back inside the JSON response (as the client's
-    // requested version) — any recent protocol number works regardless of the server's actual
-    // version, since Server List Ping predates per-version protocol negotiation for status queries.
+    // status 핸드셰이크는 이 값을 JSON 응답 안에(클라이언트가 요청한 버전으로) 그대로
+    // 돌려줄 뿐이다 — Server List Ping은 상태 조회에 있어 버전별 프로토콜 협상이
+    // 도입되기 이전 방식이라, 서버의 실제 버전과 무관하게 최근 프로토콜 번호면 아무거나
+    // 통한다.
     private static final int HANDSHAKE_PROTOCOL_VERSION = 767;
 
     private static final Pattern IPV4_127 = Pattern.compile("^127\\.");
@@ -37,9 +38,9 @@ public class PingService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    /** True for hostnames/IPs that only make sense on our own private network — blocking these
-     * keeps this public, unauthenticated endpoint (and the actual connect path) from being used
-     * as an SSRF probe against internal infrastructure. */
+    /** 우리 자신의 사설망 안에서만 의미가 있는 호스트명/IP인 경우 true를 반환한다 — 이를
+     * 차단함으로써, 인증 없이 공개된 이 엔드포인트(그리고 실제 connect 경로)가 내부
+     * 인프라를 대상으로 한 SSRF 탐지 도구로 악용되지 못하게 한다. */
     public boolean isPrivateHost(String host) {
         String h = host.toLowerCase();
         if (h.equals("localhost") || h.endsWith(".local")) return true;
@@ -102,18 +103,18 @@ public class PingService {
 
     private byte[] buildHandshakePacket(String host, int port) throws IOException {
         ByteArrayOutputStream body = new ByteArrayOutputStream();
-        writeVarInt(body, 0x00); // packet id
+        writeVarInt(body, 0x00); // 패킷 id
         writeVarInt(body, HANDSHAKE_PROTOCOL_VERSION);
         writeString(body, host);
         body.write((port >>> 8) & 0xFF);
         body.write(port & 0xFF);
-        writeVarInt(body, 1); // next state: status
+        writeVarInt(body, 1); // 다음 상태: status
         return body.toByteArray();
     }
 
     private byte[] buildStatusRequestPacket() throws IOException {
         ByteArrayOutputStream body = new ByteArrayOutputStream();
-        writeVarInt(body, 0x00); // packet id, empty body
+        writeVarInt(body, 0x00); // 패킷 id, 빈 본문
         return body.toByteArray();
     }
 
@@ -156,7 +157,7 @@ public class PingService {
         return value;
     }
 
-    /** Small cursor for reading VarInt/String fields out of an already-buffered packet body. */
+    /** 이미 버퍼에 담긴 패킷 본문에서 VarInt/String 필드를 읽어내기 위한 작은 커서. */
     private static final class ByteArrayInputStreamCursor {
         private final byte[] data;
         private int pos = 0;

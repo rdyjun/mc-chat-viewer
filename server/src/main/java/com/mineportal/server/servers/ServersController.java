@@ -21,9 +21,9 @@ public class ServersController {
         this.accountSessions = accountSessions;
     }
 
-    /** The DB owner id is always the logged-in Minecraft profile id — resolved server-side from
-     * this session's own AccountState, never taken from anything the client supplies. Null
-     * means "not logged in for this browser session". */
+    /** DB의 owner id는 언제나 로그인된 마인크래프트 프로필 id다 — 서버 측에서 이 세션
+     * 고유의 AccountState로부터 계산되며, 클라이언트가 보내는 값은 절대 사용하지 않는다.
+     * null이면 "이 브라우저 세션은 로그인하지 않음"을 뜻한다. */
     private String ownerId(String sid) {
         var profile = accountSessions.get(sid).profile;
         return profile != null ? profile.id() : null;
@@ -69,8 +69,9 @@ public class ServersController {
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "server not found")));
     }
 
-    // Users type one combined "host:port" (or bare host) field — split it into the two values
-    // the rest of the app (DB columns, protocol client, ping) still stores/uses separately.
+    // 사용자는 "host:port"(또는 host만) 형태로 하나의 필드에 입력한다 — 이를 앱의 나머지
+    // 부분(DB 컬럼, 프로토콜 클라이언트, ping)이 여전히 별도로 저장/사용하는 두 값으로
+    // 분리한다.
     private ParsedAddress parseServerAddress(String address) {
         int idx = address.lastIndexOf(':');
         if (idx == -1) return new ParsedAddress(address, 25565);

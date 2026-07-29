@@ -3,7 +3,7 @@ package com.mineportal.server.account;
 import java.util.HashMap;
 import java.util.Map;
 
-/** Public view of AccountState — never includes the raw token or private signing key. */
+/** AccountState의 공개용 뷰 — 원본 토큰이나 개인 서명 키는 절대 포함하지 않는다. */
 public final class AccountView {
 
     private AccountView() {

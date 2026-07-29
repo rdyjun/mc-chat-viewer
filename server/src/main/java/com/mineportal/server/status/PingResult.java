@@ -1,6 +1,6 @@
 package com.mineportal.server.status;
 
-/** Mirrors the JSON shape the frontend already expects from GET /api/ping. */
+/** 프론트엔드가 GET /api/ping에서 이미 기대하고 있는 JSON 형태를 그대로 따른다. */
 public record PingResult(
         boolean online,
         Integer playersOnline,

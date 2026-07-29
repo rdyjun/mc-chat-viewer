@@ -6,7 +6,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
-/** Schema and queries ported 1:1 from the old Node backend's src/db.ts. */
+/** 예전 Node 백엔드의 src/db.ts에서 스키마와 쿼리를 1:1로 포팅한 것. */
 @Repository
 public class ServerRepository {
 
@@ -40,7 +40,7 @@ public class ServerRepository {
                   PRIMARY KEY (user_id, server_id)
                 )
                 """);
-        // Upgrade path for installs created before host/port were added to this table.
+        // 이 테이블에 host/port가 추가되기 이전에 설치된 환경을 위한 업그레이드 경로.
         jdbc.execute("ALTER TABLE user_servers ADD COLUMN IF NOT EXISTS host TEXT");
         jdbc.execute("ALTER TABLE user_servers ADD COLUMN IF NOT EXISTS port INTEGER");
         jdbc.execute("""
@@ -49,8 +49,8 @@ public class ServerRepository {
                 """);
         jdbc.execute("ALTER TABLE user_servers ALTER COLUMN host SET NOT NULL");
         jdbc.execute("ALTER TABLE user_servers ALTER COLUMN port SET NOT NULL");
-        // Enforces "one user can't own the same address twice" at the DB level instead of a
-        // check-then-insert race in application code.
+        // "한 사용자가 같은 주소를 두 번 소유할 수 없다"는 제약을, 애플리케이션 코드에서
+        // check-then-insert 방식으로 처리할 때 생기는 경쟁 상태 대신 DB 레벨에서 강제한다.
         jdbc.execute("""
                 CREATE UNIQUE INDEX IF NOT EXISTS user_servers_addr_uq
                 ON user_servers (user_id, LOWER(host), port)
@@ -75,9 +75,9 @@ public class ServerRepository {
         jdbc.update("INSERT INTO servers (id, host, port, version) VALUES (?, ?, ?, ?)", id, host, port, version);
     }
 
-    /** Atomically links a server to a user, rejecting a duplicate (user_id, host, port) address
-     * via the DB-level unique index instead of a separate check-then-insert query.
-     * @return true if the link was created, false if this user already owns that address. */
+    /** 서버를 사용자에게 원자적으로 연결하며, 별도의 check-then-insert 쿼리 대신 DB 레벨의
+     * unique 인덱스를 통해 (user_id, host, port) 주소 중복을 거부한다.
+     * @return 연결이 새로 생성됐으면 true, 이 사용자가 이미 그 주소를 소유하고 있었으면 false. */
     public boolean linkUserServer(String userId, String serverId, String host, int port) {
         int rows = jdbc.update("""
                 INSERT INTO user_servers (user_id, server_id, host, port) VALUES (?, ?, ?, ?)
@@ -113,9 +113,9 @@ public class ServerRepository {
         return !rows.isEmpty();
     }
 
-    /** Fire-and-forget: records a connect attempt for the "인기 서버" ranking. Never throws — a
-     * logging hiccup should never be able to break someone's actual connect flow. Runs on its
-     * own Thread so the caller doesn't wait on the DB write. */
+    /** Fire-and-forget 방식: "인기 서버" 순위 산정을 위해 연결 시도를 기록한다. 절대 예외를
+     * 던지지 않는다 — 로깅 과정의 사소한 문제가 실제 사용자의 연결 흐름을 깨뜨려서는 안
+     * 된다. 호출자가 DB 쓰기를 기다리지 않도록 별도 Thread에서 실행한다. */
     public void logConnection(String serverId, String userId, String host, int port) {
         new Thread(() -> {
             try {
@@ -127,7 +127,7 @@ public class ServerRepository {
         }, "log-connection").start();
     }
 
-    /** This user's own most-recently-connected servers, most recent first. */
+    /** 이 사용자가 가장 최근에 연결한 서버들을, 최신순으로 반환한다. */
     public List<RecentServerEntry> recentServersForUser(String userId, int limit) {
         return jdbc.query("""
                 SELECT server_id as id, host, port, MAX(created_at) as lastConnectedAt

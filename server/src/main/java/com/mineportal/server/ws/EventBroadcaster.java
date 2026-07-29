@@ -18,9 +18,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Tracks connected WebSocket sessions and pushes the same three message shapes the frontend
- * already expects: {type:"account"}, {type:"servers"}, {type:"server-event"}. Ported from the
- * broadcast logic in src/index.ts's `wss.on("connection", ...)`.
+ * 연결된 WebSocket 세션들을 추적하며, 프론트엔드가 이미 기대하고 있는 동일한 세 가지
+ * 메시지 형태({type:"account"}, {type:"servers"}, {type:"server-event"})를 전송한다.
+ * src/index.ts의 `wss.on("connection", ...)`에 있던 브로드캐스트 로직을 포팅한 것.
  */
 @Component
 public class EventBroadcaster {
@@ -43,13 +43,22 @@ public class EventBroadcaster {
         sessions.remove(session);
     }
 
+    /** 주어진 sid를 소유한 WS 세션이 (다른 탭 등으로) 아직 남아있는지 확인한다 — 마지막
+     * 탭이 닫혔을 때만 좀비 마인크래프트 연결을 정리하기 위해 사용된다. */
+    public boolean hasSessionFor(String sid) {
+        for (WebSocketSession session : sessions) {
+            if (sid.equals(sidOf(session))) return true;
+        }
+        return false;
+    }
+
     private String sidOf(WebSocketSession session) {
         Object sid = session.getAttributes().get("sid");
         return sid != null ? sid.toString() : null;
     }
 
-    /** The DB owner id (logged-in Minecraft profile id) for whichever session owns this socket,
-     * or null if that session isn't logged in — same resolution ServersController uses. */
+    /** 이 소켓을 소유한 세션의 DB owner id(로그인된 마인크래프트 프로필 id)를 반환하며,
+     * 그 세션이 로그인하지 않았다면 null이다 — ServersController와 동일한 방식으로 계산한다. */
     private String ownerIdOf(WebSocketSession session) {
         String sid = sidOf(session);
         if (sid == null) return null;
@@ -65,7 +74,7 @@ public class EventBroadcaster {
         send(session, Map.of("type", "account", "account", account));
     }
 
-    /** Re-pushes this session's own account state — used right after a login attempt resolves. */
+    /** 이 세션 자신의 계정 상태를 다시 전송한다 — 로그인 시도가 끝난 직후에 사용된다. */
     public void refreshAccountFor(String sid) {
         for (WebSocketSession session : sessions) {
             if (sid.equals(sidOf(session))) sendAccountSnapshot(session);
@@ -80,8 +89,8 @@ public class EventBroadcaster {
         send(session, Map.of("type", "servers", "servers", servers));
     }
 
-    /** Only pushed to sessions whose owning session actually owns this server — mirrors the
-     * per-connection isServerOwnedByUser filter in the old Node backend's WS handler. */
+    /** 실제로 이 서버를 소유한 세션에게만 전송된다 — 예전 Node 백엔드의 WS 핸들러에 있던
+     * 연결별 isServerOwnedByUser 필터를 그대로 반영한 것. */
     public void broadcastServerEvent(String serverId, Map<String, Object> payload) {
         for (WebSocketSession session : sessions) {
             String ownerId = ownerIdOf(session);
@@ -90,18 +99,17 @@ public class EventBroadcaster {
         }
     }
 
-    /** Re-pushes this session's own server list — used after a mutation (add/connect) so this
-     * one browser tab refreshes without waiting for the next full-page load. */
+    /** 이 세션 자신의 서버 목록을 다시 전송한다 — 변경 작업(추가/연결) 이후에 사용되어,
+     * 이 브라우저 탭이 다음 전체 페이지 로드를 기다리지 않고도 갱신되게 한다. */
     public void refreshServersFor(String sid) {
         for (WebSocketSession session : sessions) {
             if (sid.equals(sidOf(session))) sendServersSnapshot(session);
         }
     }
 
-    /** Updates a server's status, records it in its history, and broadcasts the change — the
-     * single choke point every status transition flows through, whether it's the temporary
-     * connect stub (this step) or the real MCProtocolLib listener (later). Ported from
-     * src/servers.ts's setStatus(). */
+    /** 서버의 상태를 갱신하고, 이력에 기록하고, 변경 사항을 브로드캐스트한다 — 임시
+     * connect 스텁(현재 단계)이든 실제 MCProtocolLib 리스너(이후 단계)든, 모든 상태
+     * 전환이 반드시 거쳐가는 유일한 관문이다. src/servers.ts의 setStatus()를 포팅한 것. */
     public void setStatus(ServerConfig server, String status, boolean logged) {
         server.status = status;
         long timestamp = System.currentTimeMillis();

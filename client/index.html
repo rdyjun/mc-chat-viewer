@@ -1151,6 +1151,7 @@
     async function connectServerInSlot(i) {
       const serverId = slots[i] && slots[i].serverId;
       if (!serverId) return;
+      await ensureWs();
       const res = await fetch("/api/servers/" + serverId + "/connect", { method: "POST" });
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: res.statusText }));
@@ -1270,6 +1271,7 @@
     });
 
     async function connectServer(id) {
+      await ensureWs();
       const res = await fetch("/api/servers/" + id + "/connect", { method: "POST" });
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: res.statusText }));
@@ -1333,30 +1335,68 @@
     renderLangPicker();
     applyI18n();
 
-    const wsProtocol = location.protocol === "https:" ? "wss:" : "ws:";
-    const ws = new WebSocket(`${wsProtocol}//${location.host}/ws`);
-    ws.onmessage = (evt) => {
-      const data = JSON.parse(evt.data);
-      if (data.type === "account") {
-        if (data.account.status === "error" && account.status !== "error") {
-          showToast(t("accountLoginFailed") + (data.account.error ? ": " + data.account.error : ""));
-        }
-        account = data.account;
-        renderAccount();
-      } else if (data.type === "servers") {
-        servers = data.servers;
-        renderServers();
-      } else if (data.type === "server-event") {
-        const s = servers.find((x) => x.id === data.serverId);
-        if (data.payload.type === "status" && s) {
-          s.status = data.payload.status;
-          if (data.payload.phase) s.phase = data.payload.phase;
-          s.connected = !!data.payload.connected;
-          renderServers();
-        }
-        updateSlotsForServer(data.serverId, data.payload);
+    // Live push (account login resolution + connected-server chat/status) only needs
+    // a WebSocket while it's actually needed — see wsNeeded(). Initial page data comes
+    // from plain HTTP fetches instead of waiting on the WS snapshot.
+    let ws = null;
+
+    // 이미 열려있거나(OPEN) 열리는 중(CONNECTING)이면 그 소켓이 열릴 때까지 기다리는
+    // Promise를 반환하고, 없으면 새로 연다 — connect API를 부르기 전에 이 Promise가
+    // resolve된 걸 확인해야, 서버가 phase="active"로 표시하는 시점엔 이미 WS 세션이
+    // 등록되어 있어서(연결 직후 탭이 죽어도) 정리 로직이 반드시 걸린다.
+    function ensureWs() {
+      if (ws && ws.readyState === WebSocket.OPEN) return Promise.resolve(ws);
+      if (ws && ws.readyState === WebSocket.CONNECTING) {
+        return new Promise((resolve) => ws.addEventListener("open", () => resolve(ws), { once: true }));
       }
-    };
+      const wsProtocol = location.protocol === "https:" ? "wss:" : "ws:";
+      const socket = new WebSocket(`${wsProtocol}//${location.host}/ws`);
+      ws = socket;
+      socket.onmessage = (evt) => {
+        const data = JSON.parse(evt.data);
+        if (data.type === "account") {
+          if (data.account.status === "error" && account.status !== "error") {
+            showToast(t("accountLoginFailed") + (data.account.error ? ": " + data.account.error : ""));
+          }
+          account = data.account;
+          renderAccount();
+        } else if (data.type === "servers") {
+          servers = data.servers;
+          renderServers();
+        } else if (data.type === "server-event") {
+          const s = servers.find((x) => x.id === data.serverId);
+          if (data.payload.type === "status" && s) {
+            s.status = data.payload.status;
+            if (data.payload.phase) s.phase = data.payload.phase;
+            s.connected = !!data.payload.connected;
+            renderServers();
+          }
+          updateSlotsForServer(data.serverId, data.payload);
+        }
+      };
+      socket.onclose = () => { if (ws === socket) ws = null; };
+      return new Promise((resolve) => socket.addEventListener("open", () => resolve(socket), { once: true }));
+    }
+
+    function wsNeeded() {
+      return account.status === "logging-in" || servers.some((s) => s.phase === "active");
+    }
+
+    function syncWs() {
+      if (wsNeeded()) ensureWs();
+    }
+
+    async function initAccountAndServers() {
+      const accountRes = await fetch("/api/account");
+      account = await accountRes.json();
+      renderAccount();
+      const serversRes = await fetch("/api/servers");
+      servers = await serversRes.json();
+      renderServers();
+      syncWs();
+    }
+
+    initAccountAndServers();
   </script>
 </body>
 </html>
