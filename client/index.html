@@ -1091,7 +1091,11 @@
           e.preventDefault();
           div.classList.remove("drag-hint");
           const id = e.dataTransfer.getData("text/plain");
-          if (!id) return;
+          // 사이드바의 서버 카드가 아니라 페이지의 아무 텍스트나 끌어다 놓은 경우 —
+          // 실제 내 서버 목록에 있는 id인지 확인하고 아니면 무시한다. 이 확인이 없으면
+          // 슬롯의 serverId가 존재하지 않는 값으로 덮어써지고, renderServers()가 그걸
+          // 다시 지워버려서(refreshSlotMenus) 채팅 슬롯이 통째로 비어 보이게 된다.
+          if (!id || !servers.some((s) => s.id === id)) return;
           closeAllSlotMenus();
           slots[i].serverId = id;
           renderServers();
