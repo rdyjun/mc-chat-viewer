@@ -138,7 +138,7 @@ public class McConnectionManager {
                             "[시스템] 이 명령어는 서명이 필요한데 서명 없이 전송돼서 서버가 거부했어요.", System.currentTimeMillis()));
                     return;
                 }
-                if (isRawTranslationKey(text)) return;
+                if (isIgnoredTranslationKey(text)) return;
                 broadcaster.chatReceived(server, new ChatMessage(accountName, text, System.currentTimeMillis()));
             }
 
@@ -290,10 +290,15 @@ public class McConnectionManager {
         return "?";
     }
 
-    /** "multiplayer.player.joined", "chat.disabled.invalid_command_signature"처럼
-     * 점(.)으로 구분된 소문자 식별자만으로 이뤄진, 해석되지 않은 번역 키 형태인지 판별한다. */
-    private static boolean isRawTranslationKey(String text) {
-        return text.matches("[a-z0-9_]+(\\.[a-z0-9_]+)+");
+    // 조용히 무시할 정도로 의미 없는 번역 키만 정확히 지정한다 — "점 구분 키 형태면 다
+    // 숨긴다" 같은 넓은 규칙을 쓰면 /gamemode 같은 명령어의 실제 응답 메시지까지 삼켜서
+    // 사용자에게 아무 피드백도 안 가는 문제가 생긴다. 번역이 안 되는 다른 키들은 원문
+    // 그대로라도 보여주는 게, 아예 안 보이는 것보다 낫다.
+    private static final java.util.Set<String> IGNORED_TRANSLATION_KEYS = java.util.Set.of(
+            "multiplayer.player.joined", "multiplayer.player.left");
+
+    private static boolean isIgnoredTranslationKey(String text) {
+        return IGNORED_TRANSLATION_KEYS.contains(text);
     }
 
     /** Mojang이 발급한 세션별 RSA 키로 채팅 메시지를 서명한다 — enforce-secure-profile=true인
