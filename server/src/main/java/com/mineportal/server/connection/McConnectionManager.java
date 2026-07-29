@@ -17,6 +17,8 @@ import org.geysermc.mcprotocollib.network.packet.Packet;
 import org.geysermc.mcprotocollib.protocol.MinecraftConstants;
 import org.geysermc.mcprotocollib.protocol.MinecraftProtocol;
 import org.geysermc.mcprotocollib.protocol.data.game.ArgumentSignature;
+import org.geysermc.mcprotocollib.protocol.data.game.Holder;
+import org.geysermc.mcprotocollib.protocol.data.game.chat.ChatType;
 import org.geysermc.mcprotocollib.protocol.data.game.command.CommandNode;
 import org.geysermc.mcprotocollib.protocol.data.game.command.CommandParser;
 import org.geysermc.mcprotocollib.protocol.data.game.command.CommandType;
@@ -119,8 +121,11 @@ public class McConnectionManager {
                 } else if (packet instanceof ClientboundPlayerChatPacket p) {
                     Component body = p.getUnsignedContent();
                     String message = body != null ? plain(body) : p.getContent();
-                    text = "<" + plain(p.getName()) + "> " + message;
+                    text = renderChatType(p.getChatType(), plain(p.getName()), message);
                 } else {
+                    // 진단용 — /gamemode처럼 아직 처리하지 않는 패킷이 실제로 오는지,
+                    // 온다면 어떤 타입인지 확인하기 위함.
+                    System.out.println("[unhandled-packet] " + packet.getClass().getSimpleName());
                     return;
                 }
                 if (!joinAnnounced) {
@@ -268,6 +273,30 @@ public class McConnectionManager {
 
     private static String plain(Component component) {
         return component == null ? "" : render(component);
+    }
+
+    // 일반 채팅과 /say, /me는 서로 다른 chatType 번역 키(<%s> %s / [%s] %s / * %s %s)를
+    // 쓰는데, 서버가 그 chatType을 커스텀 데이터가 아니라 registry id로만 보내는 경우가
+    // 많다. 우리는 그 registry를 동기화해서 완전히 해석할 방법이 없어서, 바닐라 기본
+    // chat_type 레지스트리의 알려진 순서(id)를 그대로 가정한다 — 모드 없는 서버라면
+    // 대체로 안정적이지만, 확실하지 않으면 일반 채팅(chat.type.text)으로 취급한다.
+    private static String renderChatType(Holder<ChatType> holder, String sender, String message) {
+        String key;
+        if (holder.isCustom()) {
+            key = holder.custom().chat().translationKey();
+        } else {
+            key = switch (holder.id()) {
+                case 1 -> "chat.type.emote"; // /me
+                case 4 -> "chat.type.announcement"; // /say
+                default -> "chat.type.text"; // 일반 채팅
+            };
+        }
+        String pattern = LANG.getOrDefault(key, "<%s> %s");
+        try {
+            return String.format(pattern, sender, message);
+        } catch (Exception e) {
+            return "<" + sender + "> " + message;
+        }
     }
 
     /** 컴포넌트를 실제 클라이언트가 보여주는 것과 같은 텍스트로 재귀적으로 렌더링한다.
