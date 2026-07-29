@@ -1295,7 +1295,7 @@
       div.className = system ? "line line-system" : "line";
       const timeStr = new Date(time).toLocaleTimeString();
       div.innerHTML = '<span class="time">' + timeStr + '</span>' +
-        (system ? '<b class="sys-tag">' + t("sysTag") + '</b> ' : '') + escapeHtml(text);
+        (system ? '<b class="sys-tag">' + t("sysTag") + '</b> ' : '') + escapeHtml(text).replace(/\n/g, "<br>");
       container.appendChild(div);
       container.scrollTop = container.scrollHeight;
     }
