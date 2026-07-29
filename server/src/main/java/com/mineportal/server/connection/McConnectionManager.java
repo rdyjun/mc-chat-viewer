@@ -16,10 +16,16 @@ import org.geysermc.mcprotocollib.network.factory.ClientNetworkSessionFactory;
 import org.geysermc.mcprotocollib.network.packet.Packet;
 import org.geysermc.mcprotocollib.protocol.MinecraftConstants;
 import org.geysermc.mcprotocollib.protocol.MinecraftProtocol;
+import org.geysermc.mcprotocollib.protocol.data.game.ArgumentSignature;
+import org.geysermc.mcprotocollib.protocol.data.game.command.CommandNode;
+import org.geysermc.mcprotocollib.protocol.data.game.command.CommandParser;
+import org.geysermc.mcprotocollib.protocol.data.game.command.CommandType;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundCommandsPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundLoginPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundPlayerChatPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundSystemChatPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundChatCommandPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundChatCommandSignedPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundChatPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundChatSessionUpdatePacket;
 import org.springframework.stereotype.Service;
@@ -30,7 +36,9 @@ import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.security.Signature;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.BitSet;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -50,6 +58,7 @@ public class McConnectionManager {
     private final EventBroadcaster broadcaster;
     private final Map<String, ClientSession> sessions = new ConcurrentHashMap<>();
     private final Map<String, ChatSigner> chatSigners = new ConcurrentHashMap<>();
+    private final Map<String, CommandTree> commandTrees = new ConcurrentHashMap<>();
 
     public McConnectionManager(EventBroadcaster broadcaster) {
         this.broadcaster = broadcaster;
@@ -95,6 +104,15 @@ public class McConnectionManager {
                     }
                     return;
                 }
+                if (packet instanceof ClientboundCommandsPacket p) {
+                    // 이 서버의 명령어 트리를 저장해둔다 — sendChat()이 명령어를 보낼 때
+                    // 어떤 인자가 서명이 필요한지 조회하는 데 쓴다.
+                    commandTrees.put(server.id, new CommandTree(p.getNodes(), p.getFirstNodeIndex()));
+                    // 진단 로그 — 어떤 명령어의 어떤 인자가 서명이 필요한지(parser=MESSAGE)
+                    // 눈으로 확인하기 위함.
+                    logSignableCommands(p.getNodes());
+                    return;
+                }
                 String text;
                 if (packet instanceof ClientboundSystemChatPacket p) {
                     text = plain(p.getContent());
@@ -113,7 +131,13 @@ public class McConnectionManager {
                 // 서버가 번역 키를 그대로 보내는 경우가 있다("multiplayer.player.joined",
                 // "chat.disabled.invalid_command_signature" 등) — Adventure의
                 // PlainTextComponentSerializer는 번역을 해석하지 못해 키 원문을 그대로
-                // 반환하므로, 이런 미해석 키는 사용자에게 노출하지 않고 무시한다.
+                // 반환한다. 그중 명령어 서명 실패는 사용자에게 알려줘야 하므로 한국어로
+                // 바꿔서 보여주고, 그 외의(입장 알림 등) 무의미한 키는 조용히 무시한다.
+                if (text.equals("chat.disabled.invalid_command_signature")) {
+                    broadcaster.chatReceived(server, new ChatMessage(accountName,
+                            "[시스템] 이 명령어는 서명이 필요한데 서명 없이 전송돼서 서버가 거부했어요.", System.currentTimeMillis()));
+                    return;
+                }
                 if (isRawTranslationKey(text)) return;
                 broadcaster.chatReceived(server, new ChatMessage(accountName, text, System.currentTimeMillis()));
             }
@@ -122,6 +146,7 @@ public class McConnectionManager {
             public void disconnected(DisconnectedEvent event) {
                 sessions.remove(server.id);
                 chatSigners.remove(server.id);
+                commandTrees.remove(server.id);
                 server.phase = "closed";
                 server.connected = false;
                 broadcaster.setStatus(server, "disconnected: " + plain(event.getReason()), true);
@@ -149,7 +174,7 @@ public class McConnectionManager {
         // "/"로 시작하면 일반 채팅이 아니라 명령어다 — ServerboundChatPacket으로 보내면
         // 서버가 그냥 평문 채팅으로 취급해서 명령어가 실행되지 않는다.
         if (message.startsWith("/")) {
-            session.send(new ServerboundChatCommandPacket(message.substring(1)));
+            sendCommand(serverId, session, message.substring(1));
             return;
         }
 
@@ -162,8 +187,107 @@ public class McConnectionManager {
         }
     }
 
+    /** 명령어(슬래시 뺀 나머지)를 보낸다 — 이 서버의 명령어 트리에 서명이 필요한 인자
+     * (parser=MESSAGE)가 있으면 그 인자만 서명해서 ServerboundChatCommandSignedPacket으로,
+     * 없으면(또는 트리를 아직 못 받았거나 서명 인증서가 없으면) 지금처럼 무서명
+     * ServerboundChatCommandPacket으로 보낸다. */
+    private void sendCommand(String serverId, ClientSession session, String command) {
+        CommandTree tree = commandTrees.get(serverId);
+        ChatSigner signer = chatSigners.get(serverId);
+        SignableArgument match = (tree != null && signer != null) ? findSignableArgument(tree, command) : null;
+        if (match == null) {
+            session.send(new ServerboundChatCommandPacket(command));
+            return;
+        }
+        long timestampMs = Instant.now().toEpochMilli();
+        ChatSigner.SignedArgument signed = signer.signArgument(match.name(), match.text(), timestampMs);
+        session.send(new ServerboundChatCommandSignedPacket(
+                command, timestampMs, signed.salt(), List.of(signed.signature()), 0, new BitSet(), (byte) 0));
+    }
+
+    private record SignableArgument(String name, String text) {
+    }
+
+    private record CommandTree(CommandNode[] nodes, int rootIndex) {
+    }
+
+    /** command(공백으로 나뉜 토큰들)를 명령어 트리를 따라 내려가며 매칭한다. 리터럴
+     * 자식이 토큰과 일치하면 그 토큰을 소비하고 계속 내려가고, 인자 자식을 만나면 그
+     * parser가 MESSAGE인 경우 남은 토큰 전체를 그 인자의 텍스트로 간주해 반환한다(값
+     * 자체는 Brigadier에서 greedy string이라 나머지 전체를 소비하기 때문). MESSAGE가
+     * 아닌 인자는 토큰 하나를 소비한 것으로 보고 계속 진행한다 — 인용부호/좌표 등 여러
+     * 토큰을 쓰는 복잡한 인자 타입까지는 다루지 못하는 단순화된 구현이다. */
+    private static SignableArgument findSignableArgument(CommandTree tree, String command) {
+        CommandNode[] nodes = tree.nodes();
+        String[] tokens = command.split(" ");
+        if (tokens.length == 0 || nodes.length == 0) return null;
+
+        int nodeIndex = tree.rootIndex();
+        int consumed = 0;
+        while (consumed < tokens.length) {
+            String token = tokens[consumed];
+            int[] children = nodes[nodeIndex].getChildIndices();
+
+            int literalMatch = -1;
+            for (int c : children) {
+                if (nodes[c].getType() == CommandType.LITERAL && nodes[c].getName().equals(token)) {
+                    literalMatch = c;
+                    break;
+                }
+            }
+            if (literalMatch != -1) {
+                nodeIndex = literalMatch;
+                consumed++;
+                continue;
+            }
+
+            int argumentMatch = -1;
+            for (int c : children) {
+                if (nodes[c].getType() == CommandType.ARGUMENT) {
+                    argumentMatch = c;
+                    break;
+                }
+            }
+            if (argumentMatch == -1) return null; // 더 내려갈 곳이 없다
+
+            CommandNode argument = nodes[argumentMatch];
+            if (argument.getParser() == CommandParser.MESSAGE) {
+                String text = String.join(" ", Arrays.copyOfRange(tokens, consumed, tokens.length));
+                return new SignableArgument(argument.getName(), text);
+            }
+            nodeIndex = argumentMatch;
+            consumed++;
+        }
+        return null;
+    }
+
     private static String plain(Component component) {
         return component == null ? "" : PLAIN.serialize(component);
+    }
+
+    /** 이 서버의 명령어 트리(Brigadier)를 훑어서, parser가 MESSAGE인(=서명이 필요한)
+     * 인자를 가진 명령어들을 콘솔에 출력한다 — "/say"뿐 아니라 이 서버에 실제로 어떤
+     * 명령어들이 서명을 요구하는지 눈으로 확인하기 위한 임시 진단용. */
+    private static void logSignableCommands(CommandNode[] nodes) {
+        for (int i = 0; i < nodes.length; i++) {
+            CommandNode node = nodes[i];
+            if (node.getType() == CommandType.ARGUMENT && node.getParser() == CommandParser.MESSAGE) {
+                String commandName = findParentLiteralName(nodes, i);
+                System.out.println("[command-signing] /" + commandName + " <" + node.getName() + "> 는 서명이 필요해요 (parser=MESSAGE)");
+            }
+        }
+    }
+
+    /** childIndex를 자식으로 가진 리터럴(명령어 이름) 노드를 찾는다. */
+    private static String findParentLiteralName(CommandNode[] nodes, int childIndex) {
+        for (CommandNode node : nodes) {
+            if (node.getType() == CommandType.LITERAL) {
+                for (int c : node.getChildIndices()) {
+                    if (c == childIndex) return node.getName();
+                }
+            }
+        }
+        return "?";
     }
 
     /** "multiplayer.player.joined", "chat.disabled.invalid_command_signature"처럼
@@ -193,36 +317,50 @@ public class McConnectionManager {
                     sessionId, certificates.getExpireTimeMs(), certificates.getPublicKey(), certificates.getPublicKeySignature());
         }
 
+        record SignedArgument(long salt, ArgumentSignature signature) {
+        }
+
         /** 레이아웃: 버전 마커(4) + 발신자 UUID(16바이트) + 세션 UUID(16바이트) +
          * 메시지 인덱스(4) + salt(8) + 타임스탬프(epoch 초, 8) + 메시지 길이(4) + 메시지
          * UTF-8 바이트 + 마지막으로 확인한 메시지 개수(4, 여기선 추적하지 않으므로 항상 0). */
         ServerboundChatPacket signedChatPacket(String message, long timestampMs) {
-            int index = messageIndex.getAndIncrement();
             long salt = random.nextLong();
-            byte[] messageBytes = message.getBytes(StandardCharsets.UTF_8);
+            byte[] signature = sign(message, timestampMs, salt);
+            return new ServerboundChatPacket(message, timestampMs, salt, signature, 0, new BitSet(), 0);
+        }
 
-            ByteBuffer buf = ByteBuffer.allocate(4 + 16 + 16 + 4 + 8 + 8 + 4 + messageBytes.length + 4);
+        /** 명령어 인자 하나를 채팅 메시지와 동일한 바이트 레이아웃으로 서명한다 — 메시지
+         * 인덱스는 일반 채팅과 같은 카운터를 이어서 쓴다(서버가 세션 전체에서 순서를
+         * 하나로 추적한다고 가정). 실제 서버 반응으로 검증이 필요한 부분이다. */
+        SignedArgument signArgument(String argumentName, String text, long timestampMs) {
+            long salt = random.nextLong();
+            byte[] signature = sign(text, timestampMs, salt);
+            return new SignedArgument(salt, new ArgumentSignature(argumentName, signature));
+        }
+
+        private byte[] sign(String text, long timestampMs, long salt) {
+            int index = messageIndex.getAndIncrement();
+            byte[] textBytes = text.getBytes(StandardCharsets.UTF_8);
+
+            ByteBuffer buf = ByteBuffer.allocate(4 + 16 + 16 + 4 + 8 + 8 + 4 + textBytes.length + 4);
             buf.putInt(1);
             putUuidBytes(buf, senderId);
             putUuidBytes(buf, sessionId);
             buf.putInt(index);
             buf.putLong(salt);
             buf.putLong(timestampMs / 1000);
-            buf.putInt(messageBytes.length);
-            buf.put(messageBytes);
+            buf.putInt(textBytes.length);
+            buf.put(textBytes);
             buf.putInt(0);
 
-            byte[] signature;
             try {
                 Signature sig = Signature.getInstance("SHA256withRSA");
                 sig.initSign(certificates.getPrivateKey());
                 sig.update(buf.array());
-                signature = sig.sign();
+                return sig.sign();
             } catch (Exception e) {
-                throw new RuntimeException("채팅 메시지 서명에 실패했어요", e);
+                throw new RuntimeException("서명에 실패했어요", e);
             }
-
-            return new ServerboundChatPacket(message, timestampMs, salt, signature, 0, new BitSet(), 0);
         }
 
         private static void putUuidBytes(ByteBuffer buf, UUID uuid) {
