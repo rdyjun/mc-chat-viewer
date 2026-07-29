@@ -178,6 +178,13 @@
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
   }
+  .server-list-skeleton-item, .slot-server-btn.skeleton {
+    background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.11) 50%, rgba(255,255,255,0.04) 75%);
+    background-size: 200% 100%;
+    animation: mode-skeleton-pulse 1.2s ease-in-out infinite;
+  }
+  .server-list-skeleton-item { height: 3.6rem; border-radius: 10px; }
+  .slot-server-btn.skeleton { background-image: none; pointer-events: none; }
   .panel {
     padding: 1.35rem;
   }
@@ -838,6 +845,7 @@
 
     let account = { status: "logged-out" };
     let servers = [];
+    let serversLoaded = false; // 서버 목록을 아직 한 번도 못 받아왔으면(HTTP/WS 둘 다) true로 안 바뀜 — 그동안은 스켈레톤을 보여준다
     let layout = 1;
     let slots = [{ serverId: null }]; // one entry per visible chat-grid slot
     let slotRefs = []; // DOM refs parallel to `slots`, rebuilt whenever the layout changes
@@ -998,6 +1006,11 @@
 
     function renderServers() {
       serverListEl.innerHTML = "";
+      if (!serversLoaded) {
+        serverListEl.innerHTML = '<li class="server-list-skeleton-item"></li>'.repeat(3);
+        refreshSlotMenus();
+        return;
+      }
       servers.forEach((s) => {
         const li = document.createElement("li");
         li.className = slots.some((slot) => slot.serverId === s.id) ? "selected" : "";
@@ -1181,6 +1194,12 @@
 
     function refreshSlotMenus() {
       slotRefs.forEach((ref, i) => {
+        ref.btnEl.classList.toggle("skeleton", !serversLoaded);
+        if (!serversLoaded) {
+          ref.btnEl.textContent = "";
+          ref.menuEl.innerHTML = "";
+          return;
+        }
         if (slots[i].serverId && !servers.some((s) => s.id === slots[i].serverId)) {
           slots[i].serverId = null;
         }
@@ -1366,6 +1385,7 @@
           renderAccount();
         } else if (data.type === "servers") {
           servers = data.servers;
+          serversLoaded = true;
           renderServers();
         } else if (data.type === "server-event") {
           const s = servers.find((x) => x.id === data.serverId);
@@ -1396,6 +1416,7 @@
       renderAccount();
       const serversRes = await fetch("/api/servers");
       servers = await serversRes.json();
+      serversLoaded = true;
       renderServers();
       syncWs();
     }
