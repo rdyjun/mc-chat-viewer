@@ -1,5 +1,7 @@
 package com.mineportal.server.account;
 
+import com.mineportal.server.connection.McConnectionManager;
+import com.mineportal.server.servers.ServerRegistry;
 import com.mineportal.server.session.SidCookieFilter;
 import com.mineportal.server.ws.EventBroadcaster;
 import jakarta.servlet.http.HttpServletResponse;
@@ -11,6 +13,7 @@ import net.raphimc.minecraftauth.util.MicrosoftConstants;
 import net.raphimc.minecraftauth.util.OAuthEnvironment;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -51,15 +54,38 @@ public class AuthController {
 
     private final AccountSessionManager accountSessions;
     private final EventBroadcaster broadcaster;
+    private final ServerRegistry registry;
+    private final McConnectionManager mcConnections;
 
-    public AuthController(AccountSessionManager accountSessions, EventBroadcaster broadcaster) {
+    public AuthController(AccountSessionManager accountSessions, EventBroadcaster broadcaster,
+                           ServerRegistry registry, McConnectionManager mcConnections) {
         this.accountSessions = accountSessions;
         this.broadcaster = broadcaster;
+        this.registry = registry;
+        this.mcConnections = mcConnections;
     }
 
     @GetMapping("/api/account")
     public Map<String, Object> account(@RequestAttribute("sid") String sid) {
         return AccountView.of(accountSessions.get(sid));
+    }
+
+    @PostMapping("/api/account/logout")
+    public ResponseEntity<?> logout(@RequestAttribute("sid") String sid) {
+        var profile = accountSessions.get(sid).profile;
+        if (profile != null) {
+            // 로그아웃하면서 이 계정으로 활성 연결된 마인크래프트 서버들도 정리한다 —
+            // 계정 세션이 사라져도 연결이 좀비로 남지 않도록.
+            for (var server : registry.listServers(profile.id())) {
+                if ("active".equals(server.phase)) {
+                    mcConnections.disconnect(server.id);
+                }
+            }
+        }
+        accountSessions.remove(sid);
+        broadcaster.refreshAccountFor(sid);
+        broadcaster.refreshServersFor(sid);
+        return ResponseEntity.ok(Map.of("ok", true));
     }
 
     @GetMapping("/api/account/login/microsoft")

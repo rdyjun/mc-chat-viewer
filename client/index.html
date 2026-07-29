@@ -79,6 +79,17 @@
   .lang-menu .lang-item .lang-flag img { width: 1.1rem; }
   #accountStatus { font-size: 0.82rem; color: #ccc; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.4rem; }
   .account-face { width: 1.35rem; height: 1.35rem; border-radius: 4px; image-rendering: pixelated; display: block; }
+  .account-picker { position: relative; }
+  .account-btn { background: none; border: none; box-shadow: none; padding: 0.25rem 0.5rem; border-radius: 8px; cursor: pointer; }
+  .account-btn:hover { background: rgba(255,255,255,0.08); filter: none; }
+  .account-menu {
+    display: none; position: absolute; top: calc(100% + 0.4rem); right: 0; z-index: 20;
+    background: rgba(38,38,46,0.9); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid var(--glass-border); border-radius: 10px; overflow: hidden; min-width: 8rem;
+  }
+  .account-menu.open { display: block; }
+  .account-menu .account-menu-item { padding: 0.55rem 0.9rem; font-size: 0.82rem; cursor: pointer; white-space: nowrap; }
+  .account-menu .account-menu-item:hover { background: rgba(255,255,255,0.08); }
   .modal-backdrop {
     display: none; position: fixed; inset: 0; background: rgba(8,8,12,0.55);
     backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
@@ -359,7 +370,12 @@
       <div class="lang-menu" id="langMenu"></div>
     </div>
     <div class="accountArea">
-      <span id="accountStatus"></span>
+      <div class="account-picker" id="accountPicker" style="display:none">
+        <button type="button" class="account-btn" id="accountBtn"><span id="accountStatus"></span></button>
+        <div class="account-menu" id="accountMenu">
+          <div class="account-menu-item" id="logoutBtn" data-i18n="logoutBtn">로그아웃</div>
+        </div>
+      </div>
       <button type="button" id="loginTriggerBtn" data-i18n="loginBtn">로그인</button>
     </div>
   </header>
@@ -490,6 +506,7 @@
         tabHome: "홈",
         tabPlay: "플레이",
         loginBtn: "로그인",
+        logoutBtn: "로그아웃",
         msLoginBtn: "Microsoft로 로그인",
         addServerModalTitle: "서버 추가",
         hostPlaceholder: "서버 주소 (예: domain.com:25565)",
@@ -548,6 +565,7 @@
         tabHome: "Home",
         tabPlay: "Play",
         loginBtn: "Log in",
+        logoutBtn: "Log out",
         msLoginBtn: "Log in with Microsoft",
         addServerModalTitle: "Add Server",
         hostPlaceholder: "Server address (e.g. domain.com:25565)",
@@ -633,6 +651,10 @@
     }
 
     const accountStatusEl = document.getElementById("accountStatus");
+    const accountPicker = document.getElementById("accountPicker");
+    const accountBtn = document.getElementById("accountBtn");
+    const accountMenu = document.getElementById("accountMenu");
+    const logoutBtn = document.getElementById("logoutBtn");
     const addServerForm = document.getElementById("addServerForm");
     const serverListEl = document.getElementById("serverList");
     const layoutSwitcher = document.getElementById("layoutSwitcher");
@@ -1005,17 +1027,34 @@
         accountStatusEl.innerHTML =
           '<img class="account-face" src="https://mc-heads.net/avatar/' + encodeURIComponent(name) + '/24" alt="" />' +
           '<span>' + escapeHtml(name) + '</span>';
+        accountPicker.style.display = "";
         loginTriggerBtn.style.display = "none";
         closeLoginModal();
       } else if (account.status === "logging-in") {
         accountStatusEl.textContent = "";
+        accountPicker.style.display = "none";
         loginTriggerBtn.style.display = "none";
       } else {
         accountStatusEl.textContent = "";
+        accountPicker.style.display = "none";
+        accountMenu.classList.remove("open");
         loginTriggerBtn.style.display = "";
       }
       loadRecentServers();
     }
+
+    accountBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      accountMenu.classList.toggle("open");
+    });
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest("#accountPicker")) accountMenu.classList.remove("open");
+    });
+    logoutBtn.addEventListener("click", async () => {
+      accountMenu.classList.remove("open");
+      await fetch("/api/account/logout", { method: "POST" });
+      location.reload();
+    });
 
     function renderServers() {
       serverListEl.innerHTML = "";
