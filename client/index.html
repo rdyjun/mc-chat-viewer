@@ -242,12 +242,12 @@
   .panel-header h2 { margin: 0; }
   .add-server-btn { padding: 0.4rem 0.75rem; font-size: 0.78rem; }
   #serverList { list-style: none; padding: 0; margin: 0.75rem 0 0; display: flex; flex-direction: column; gap: 0.5rem; }
-  #serverList li {
+  #serverList li, .home-demo-sidebar li {
     padding: 0.7rem; border-radius: 10px; font-size: 0.85rem; cursor: grab;
     background: rgba(255,255,255,0.05); border: 1px solid transparent;
     display: flex; align-items: center; gap: 0.9rem;
   }
-  #serverList li.selected { border-color: var(--accent); background: rgba(155,93,229,0.14); }
+  #serverList li.selected, .home-demo-sidebar li.selected { border-color: var(--accent); background: rgba(155,93,229,0.14); }
   .server-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
   .server-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .server-status { color: #9ad; font-size: 0.75rem; }
@@ -363,6 +363,28 @@
   .line.line-system { color: #9a9aa8; font-style: italic; font-size: 0.82rem; }
   .sys-tag { font-style: normal; color: var(--accent); margin-right: 0.35rem; }
   .time { color: #888; font-size: 0.8rem; margin-right: 0.5rem; }
+  /* Home hero preview: a non-interactive mockup of the real Play tab, scripted in JS
+     to animate on a loop so we don't need to record/host an actual demo video. */
+  .home-demo { margin-top: 2rem; display: flex; justify-content: center; }
+  .home-demo-frame {
+    display: flex; gap: 1rem; width: 46rem; max-width: 100%; height: 19rem;
+    background: var(--glass-bg-strong); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid var(--glass-border); border-radius: 16px; padding: 1.1rem;
+    box-shadow: var(--glass-shadow); pointer-events: none; text-align: left;
+  }
+  .home-demo-sidebar-col { width: 11.5rem; flex-shrink: 0; display: flex; flex-direction: column; gap: 0.6rem; min-height: 0; }
+  .home-demo-sidebar-title { font-size: 0.72rem; color: #9a9aa8; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 0.1rem; }
+  .home-demo-sidebar { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; overflow: hidden; }
+  .home-demo-slot { flex: 1; min-width: 0; }
+  .home-demo-inputbar {
+    padding: 0.6rem 0.75rem; border-radius: 8px; border: 1px solid var(--glass-border);
+    background: rgba(0,0,0,0.25); color: #eee; font-size: 0.85rem; min-height: 1.4rem;
+  }
+  .home-demo-caret {
+    display: inline-block; width: 2px; height: 0.9em; background: #eee; vertical-align: middle;
+    margin-left: 1px; animation: home-demo-caret-blink 0.9s step-end infinite;
+  }
+  @keyframes home-demo-caret-blink { 50% { opacity: 0; } }
   .trial-warning {
     display: none; border-radius: 10px; padding: 0.85rem 1.1rem; font-size: 0.82rem; margin-bottom: 1.25rem; line-height: 1.5;
     background: rgba(169,124,31,0.18); border: 1px solid rgba(169,124,31,0.5); color: #ffd98a;
@@ -538,6 +560,45 @@
         <button type="button" class="btn-try" id="tryWebBtn" data-i18n="tryWebBtn">🎮 플레이</button>
       </div>
       <div class="hero-note" id="desktopStatusNote" data-i18n="desktopNoteDefault">데스크톱 프로그램은 내 PC에서 직접 접속해 IP 제한이 있는 서버에서도 안정적으로 동작해요.</div>
+
+      <div class="home-demo" aria-hidden="true">
+        <div class="home-demo-frame">
+          <div class="home-demo-sidebar-col">
+            <div class="home-demo-sidebar-title">서버 목록</div>
+            <ul class="home-demo-sidebar">
+              <li class="selected">
+                <span class="drag-handle" aria-hidden="true"></span>
+                <div class="server-info">
+                  <span class="server-meta">play.hypixel.net</span>
+                  <div class="server-status">연결됨</div>
+                </div>
+              </li>
+              <li>
+                <span class="drag-handle" aria-hidden="true"></span>
+                <div class="server-info">
+                  <span class="server-meta">mc.hive.com</span>
+                  <div class="server-status">대기 중</div>
+                </div>
+              </li>
+              <li>
+                <span class="drag-handle" aria-hidden="true"></span>
+                <div class="server-info">
+                  <span class="server-meta">survival.kr</span>
+                  <div class="server-status">대기 중</div>
+                </div>
+              </li>
+            </ul>
+          </div>
+          <div class="chat-slot home-demo-slot">
+            <div class="slot-header">
+              <span class="slot-status-dot connected" id="homeDemoDot"></span>
+              <button type="button" class="slot-server-btn" tabindex="-1">play.hypixel.net</button>
+            </div>
+            <div class="slot-log" id="homeDemoLog"></div>
+            <div class="home-demo-inputbar"><span id="homeDemoTyped"></span><span class="home-demo-caret"></span></div>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="panel" id="recentServersPanel" style="display:none">
       <h2 data-i18n="recentServersTitle">최근 접속 서버</h2>
@@ -1250,6 +1311,81 @@
 
     loadRecentServers();
     renderServerGridView();
+
+    // Purely decorative: a scripted, looping mockup of the real Play tab so the
+    // homepage shows something "alive" without needing to record/host a demo video.
+    function runHomeDemo() {
+      const logEl = document.getElementById("homeDemoLog");
+      const typedEl = document.getElementById("homeDemoTyped");
+      const dotEl = document.getElementById("homeDemoDot");
+      if (!logEl || !typedEl || !dotEl) return;
+
+      const script = [
+        { system: "play.hypixel.net 서버에 연결되었습니다." },
+        { text: "<Steve> 안녕하세요~ 오랜만이네요" },
+        { text: "<Alex> ㅎㅇㅎㅇ 반가워요!" },
+        { type: "나도 같이 사냥 가도 될까요?" },
+        { text: "<Notch> 그럼요, 스폰에서 봐요 ㄱㄱ" },
+        { system: "Herobrine님이 게임에 참여했습니다." },
+        { text: "<Alex> 어... 방금 좀 무서운 이름이 지나갔는데" },
+      ];
+
+      function appendLine(text, system) {
+        const div = document.createElement("div");
+        div.className = system ? "line line-system" : "line";
+        const time = new Date().toLocaleTimeString();
+        div.innerHTML = '<span class="time">' + time + '</span>' +
+          (system ? '<b class="sys-tag">시스템</b> ' : '') + escapeHtml(text);
+        logEl.appendChild(div);
+        while (logEl.children.length > 6) logEl.removeChild(logEl.firstChild);
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      function typeInto(text, done) {
+        let i = 0;
+        (function tick() {
+          typedEl.textContent = text.slice(0, i);
+          if (i < text.length) {
+            i++;
+            setTimeout(tick, 45 + Math.random() * 40);
+          } else {
+            setTimeout(() => {
+              typedEl.textContent = "";
+              appendLine(text, false);
+              done();
+            }, 500);
+          }
+        })();
+      }
+
+      let idx = 0;
+      function step() {
+        const entry = script[idx];
+        const isLast = idx === script.length - 1;
+        idx = isLast ? 0 : idx + 1;
+        function afterEntry() {
+          if (isLast) {
+            setTimeout(() => {
+              dotEl.className = "slot-status-dot connecting";
+              setTimeout(() => {
+                dotEl.className = "slot-status-dot connected";
+                step();
+              }, 900);
+            }, 1200);
+          } else {
+            setTimeout(step, 1400);
+          }
+        }
+        if (entry.type) {
+          typeInto(entry.type, afterEntry);
+        } else {
+          appendLine(entry.system || entry.text, !!entry.system);
+          afterEntry();
+        }
+      }
+      step();
+    }
+    runHomeDemo();
 
     function escapeHtml(s) {
       const d = document.createElement("div");
