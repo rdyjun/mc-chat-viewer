@@ -1302,6 +1302,10 @@
 
         li.addEventListener("dragstart", (e) => {
           e.dataTransfer.setData("text/plain", s.id);
+          // 커스텀 타입도 같이 실어 보낸다 — dragover 시점엔 브라우저가 보안상 값(getData)은
+          // 안 보여주고 타입 목록(types)만 보여주므로, 이 타입의 존재 여부로 "우리 서버 카드를
+          // 끄는 중"인지 "페이지의 아무 텍스트나 긁는 중"인지 dragover에서 미리 구분한다.
+          e.dataTransfer.setData("application/x-server-id", s.id);
           e.dataTransfer.effectAllowed = "move";
         });
         li.querySelector(".select-slot-btn").addEventListener("click", (e) => {
@@ -1382,6 +1386,7 @@
         // pulsing outline hints "drop to show here"; dropping only changes the
         // selection, it never connects (connecting stays the slot's own 연결 button).
         div.addEventListener("dragover", (e) => {
+          if (!e.dataTransfer.types.includes("application/x-server-id")) return;
           e.preventDefault();
           div.classList.add("drag-hint");
         });
