@@ -121,6 +121,15 @@
   .view.active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
   .hero {
     padding: 3.5rem 2rem 4rem; text-align: center; margin-bottom: 1.5rem;
+    position: relative;
+  }
+  .hero::before {
+    content: "";
+    position: absolute; z-index: -1;
+    top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 34rem; height: 34rem; max-width: 90vw;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 70%);
   }
   .hero h1 { font-size: 1.6rem; margin-bottom: 0.6rem; }
   .hero p { color: #b9b9c4; font-size: 0.95rem; margin-bottom: 1.8rem; }
