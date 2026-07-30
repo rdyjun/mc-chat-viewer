@@ -271,6 +271,8 @@
   }
   .slot-header { display: flex; gap: 0.5rem; align-items: center; }
   .slot-connect-btn { flex-shrink: 0; padding: 0.4rem 0.7rem; font-size: 0.78rem; }
+  .slot-connect-btn.disconnect-mode { background: rgba(224,84,74,0.16); border: 1px solid rgba(224,84,74,0.5); color: #ffb4ac; }
+  .slot-connect-btn.disconnect-mode:hover { background: rgba(224,84,74,0.28); }
   .slot-server-picker { position: relative; flex: 1; min-width: 0; }
   .slot-server-btn {
     width: 100%; text-align: left; background-color: rgba(255,255,255,0.06); color: #eee; border: 1px solid var(--glass-border); border-radius: 8px;
@@ -451,6 +453,19 @@
     </div>
   </div>
 
+  <div class="gate-backdrop" id="disconnectConfirmBackdrop">
+    <div class="gate-modal">
+      <button type="button" class="gate-close" id="disconnectConfirmCloseBtn">✕</button>
+      <div class="gate-icon">🔌</div>
+      <h2 data-i18n="disconnectConfirmTitle">연결을 끊을까요?</h2>
+      <p data-i18n="disconnectConfirmText">진짜 이 서버와의 연결을 끊으시겠습니까?</p>
+      <div class="gate-buttons">
+        <button type="button" class="btn-secondary" id="disconnectConfirmCancelBtn" data-i18n="disconnectConfirmCancel">취소</button>
+        <button type="button" class="btn-danger" id="disconnectConfirmProceedBtn" data-i18n="disconnectConfirmProceed">연결 해제</button>
+      </div>
+    </div>
+  </div>
+
   <div class="view active" id="homeView">
     <div class="hero">
       <h1 data-i18n="appTitle">마인포탈</h1>
@@ -562,6 +577,11 @@
         banWarningTextHtml: "지금은 <b>웹 체험 모드</b>예요. 이 방식은 서버가 대신 접속을 대리해주는 방식이라, 공인/실서버에 접속하면 \"동일 IP 다중 접속\" 등으로 인식되어 <b>밴(차단)</b>될 수 있어요.<br />그럼에도 접속하시겠습니까?",
         banWarningCancel: "취소",
         banWarningProceed: "그래도 접속",
+        disconnectBtn: "연결 해제",
+        disconnectConfirmTitle: "연결을 끊을까요?",
+        disconnectConfirmText: "진짜 이 서버와의 연결을 끊으시겠습니까?",
+        disconnectConfirmCancel: "취소",
+        disconnectConfirmProceed: "연결 해제",
         exploreTitle: "서버 탐색",
         serverListTitle: "서버 목록",
         addServerBtn: "+ 서버 추가",
@@ -626,6 +646,11 @@
         banWarningTextHtml: "You're in <b>web trial mode</b>. Since the server relays your connection on your behalf, official/public servers may flag it as \"multiple connections from the same IP\" and <b>ban</b> you.<br />Do you still want to connect?",
         banWarningCancel: "Cancel",
         banWarningProceed: "Connect anyway",
+        disconnectBtn: "Disconnect",
+        disconnectConfirmTitle: "Disconnect from this server?",
+        disconnectConfirmText: "Are you sure you want to disconnect from this server?",
+        disconnectConfirmCancel: "Cancel",
+        disconnectConfirmProceed: "Disconnect",
         exploreTitle: "Discover Servers",
         serverListTitle: "Server List",
         addServerBtn: "+ Add Server",
@@ -943,6 +968,36 @@
       if (e.target === banWarningBackdrop) closeBanWarning(false);
     });
 
+    // Confirmation modal shown before disconnecting from a server, so an accidental
+    // click on the connect button (now repurposed as a disconnect button once
+    // connected) doesn't silently drop the player's connection.
+    const disconnectConfirmBackdrop = document.getElementById("disconnectConfirmBackdrop");
+    const disconnectConfirmCloseBtn = document.getElementById("disconnectConfirmCloseBtn");
+    const disconnectConfirmCancelBtn = document.getElementById("disconnectConfirmCancelBtn");
+    const disconnectConfirmProceedBtn = document.getElementById("disconnectConfirmProceedBtn");
+    let disconnectConfirmResolve = null;
+
+    function closeDisconnectConfirm(confirmed) {
+      disconnectConfirmBackdrop.classList.remove("open");
+      if (disconnectConfirmResolve) {
+        const resolve = disconnectConfirmResolve;
+        disconnectConfirmResolve = null;
+        resolve(confirmed);
+      }
+    }
+
+    function confirmDisconnect() {
+      disconnectConfirmBackdrop.classList.add("open");
+      return new Promise((resolve) => { disconnectConfirmResolve = resolve; });
+    }
+
+    disconnectConfirmCloseBtn.addEventListener("click", () => closeDisconnectConfirm(false));
+    disconnectConfirmCancelBtn.addEventListener("click", () => closeDisconnectConfirm(false));
+    disconnectConfirmProceedBtn.addEventListener("click", () => closeDisconnectConfirm(true));
+    disconnectConfirmBackdrop.addEventListener("click", (e) => {
+      if (e.target === disconnectConfirmBackdrop) closeDisconnectConfirm(false);
+    });
+
     let account = { status: "logged-out" };
     let servers = [];
     let serversLoaded = false; // 서버 목록을 아직 한 번도 못 받아왔으면(HTTP/WS 둘 다) true로 안 바뀜 — 그동안은 스켈레톤을 보여준다
@@ -1227,7 +1282,15 @@
           if (!isOpen) menuEl.classList.add("open");
         });
 
-        connectBtnEl.addEventListener("click", () => connectServerInSlot(i));
+        connectBtnEl.addEventListener("click", () => {
+          const serverId = slots[i] && slots[i].serverId;
+          const s = serverId && servers.find((x) => x.id === serverId);
+          if (s && s.phase === "active" && s.connected) {
+            disconnectServerInSlot(i);
+          } else {
+            connectServerInSlot(i);
+          }
+        });
 
         // Drop target for dragging a server card here from the sidebar — a dashed
         // pulsing outline hints "drop to show here"; dropping only changes the
@@ -1287,8 +1350,9 @@
       slots.forEach((_, i) => loadSlotDetail(i));
     }
 
-    // Reflects a slot's server connection state onto its connect button — mirrors the
-    // same connect/connecting/connected labeling used by the sidebar list and server grid.
+    // Reflects a slot's server connection state onto its connect button. Once the
+    // server is actually connected, the same button switches to a "연결 해제"
+    // (disconnect) button in place — it never adds a second button next to it.
     function updateSlotConnectBtn(i) {
       const ref = slotRefs[i];
       if (!ref) return;
@@ -1297,11 +1361,23 @@
       if (!s) {
         ref.connectBtnEl.textContent = t("connectBtn");
         ref.connectBtnEl.disabled = true;
+        ref.connectBtnEl.classList.remove("disconnect-mode");
         return;
       }
       const canConnect = s.phase !== "active";
-      ref.connectBtnEl.textContent = connectLabel(s);
-      ref.connectBtnEl.disabled = !canConnect;
+      if (canConnect) {
+        ref.connectBtnEl.textContent = t("connectBtn");
+        ref.connectBtnEl.disabled = false;
+        ref.connectBtnEl.classList.remove("disconnect-mode");
+      } else if (s.connected) {
+        ref.connectBtnEl.textContent = t("disconnectBtn");
+        ref.connectBtnEl.disabled = false;
+        ref.connectBtnEl.classList.add("disconnect-mode");
+      } else {
+        ref.connectBtnEl.textContent = t("connectingBtn");
+        ref.connectBtnEl.disabled = true;
+        ref.connectBtnEl.classList.remove("disconnect-mode");
+      }
     }
 
     async function connectServerInSlot(i) {
@@ -1318,6 +1394,20 @@
         } else {
           alert(t("alertConnectFailed", { error: body.error }));
         }
+        return;
+      }
+      renderServers();
+      loadSlotDetail(i);
+    }
+
+    async function disconnectServerInSlot(i) {
+      const serverId = slots[i] && slots[i].serverId;
+      if (!serverId) return;
+      if (!(await confirmDisconnect())) return;
+      const res = await fetch("/api/servers/" + serverId + "/disconnect", { method: "POST" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: res.statusText }));
+        alert(t("alertConnectFailed", { error: body.error }));
         return;
       }
       renderServers();

@@ -63,6 +63,22 @@ public class ConnectionController {
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
+    @PostMapping("/{id}/disconnect")
+    public ResponseEntity<?> disconnect(@RequestAttribute("sid") String sid, @PathVariable String id) {
+        String ownerId = ownerId(sid);
+        if (ownerId == null) {
+            return ResponseEntity.status(409).body(Map.of("error", "Log in with a Microsoft account before disconnecting from a server", "code", "not-logged-in"));
+        }
+        ServerConfig server = registry.getServer(id, ownerId).orElse(null);
+        if (server == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "server not found"));
+        }
+        if ("active".equals(server.phase)) {
+            mcConnections.disconnect(server.id);
+        }
+        return ResponseEntity.ok(Map.of("ok", true));
+    }
+
     @PostMapping("/{id}/chat")
     public ResponseEntity<?> chat(@RequestAttribute("sid") String sid, @PathVariable String id, @RequestBody Map<String, String> body) {
         String ownerId = ownerId(sid);
