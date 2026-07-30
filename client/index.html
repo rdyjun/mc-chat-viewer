@@ -417,6 +417,15 @@
     margin-left: 1px; animation: home-demo-caret-blink 0.9s step-end infinite;
   }
   @keyframes home-demo-caret-blink { 50% { opacity: 0; } }
+  .home-demo-multi-slots { display: flex; gap: 1rem; flex: 1; min-width: 0; }
+  .home-demo-anywhere { display: flex; flex-direction: column; gap: 0.9rem; justify-content: center; }
+  .home-demo-device {
+    display: flex; align-items: center; gap: 0.75rem; padding: 0.9rem 1.1rem; border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04);
+  }
+  .home-demo-device-icon { font-size: 1.3rem; }
+  .home-demo-device-name { font-weight: 600; }
+  .home-demo-device-status { font-size: 0.8rem; color: #9ad; }
   @media (max-width: 900px) {
     .home-demo-body { flex-direction: column; }
     .home-demo-sidebar-col { width: 100%; }
@@ -599,11 +608,11 @@
       <div class="hero-note" id="desktopStatusNote" data-i18n="desktopNoteDefault">데스크톱 프로그램은 내 PC에서 직접 접속해 IP 제한이 있는 서버에서도 안정적으로 동작해요.</div>
 
       <div class="hero-feature-tabs" id="heroFeatureTabs">
-        <button type="button" class="active" data-i18n="featureTab1">멀티 서버 동시 접속</button>
-        <button type="button" data-i18n="featureTab2">실시간 채팅 확인</button>
-        <button type="button" data-i18n="featureTab3">명령어 서명 지원</button>
-        <button type="button" data-i18n="featureTab4">브라우저에서 바로 체험</button>
-        <button type="button" data-i18n="featureTab5">어디서든 접속</button>
+        <button type="button" data-scene="multi" data-i18n="featureTab1">멀티 서버 동시 접속</button>
+        <button type="button" class="active" data-scene="chat" data-i18n="featureTab2">실시간 채팅 확인</button>
+        <button type="button" data-scene="sign" data-i18n="featureTab3">명령어 서명 지원</button>
+        <button type="button" data-scene="trial" data-i18n="featureTab4">브라우저에서 바로 체험</button>
+        <button type="button" data-scene="anywhere" data-i18n="featureTab5">어디서든 접속</button>
       </div>
     </div>
 
@@ -614,7 +623,7 @@
         <span class="home-demo-dot green"></span>
         <div class="home-demo-tab">mc.dongsoop.site/play</div>
       </div>
-      <div class="home-demo-body">
+      <div class="home-demo-body" id="homeDemoStage">
         <div class="home-demo-sidebar-col">
           <div class="home-demo-sidebar-title">서버 목록</div>
           <ul class="home-demo-sidebar">
@@ -1377,9 +1386,22 @@
     loadRecentServers();
     renderServerGridView();
 
-    // Purely decorative: a scripted, looping mockup of the real Play tab so the
-    // homepage shows something "alive" without needing to record/host a demo video.
-    function runHomeDemo() {
+    // Purely decorative: a mockup of the real Play tab so the homepage shows
+    // something "alive" without needing to record/host a demo video. Each feature
+    // tab swaps in its own scene (most are static, the chat tab is a looping script)
+    // instead of all five tabs pointing at the same content.
+    let homeDemoGen = 0;
+
+    const homeDemoSidebarHtml =
+      '<div class="home-demo-sidebar-col">' +
+      '<div class="home-demo-sidebar-title">서버 목록</div>' +
+      '<ul class="home-demo-sidebar">' +
+      '<li class="selected"><span class="drag-handle" aria-hidden="true"></span><div class="server-info"><span class="server-meta">play.hypixel.net</span><div class="server-status">연결됨</div></div></li>' +
+      '<li><span class="drag-handle" aria-hidden="true"></span><div class="server-info"><span class="server-meta">mc.hive.com</span><div class="server-status">대기 중</div></div></li>' +
+      '<li><span class="drag-handle" aria-hidden="true"></span><div class="server-info"><span class="server-meta">survival.kr</span><div class="server-status">대기 중</div></div></li>' +
+      '</ul></div>';
+
+    function runHomeDemoChat(isActive) {
       const logEl = document.getElementById("homeDemoLog");
       const typedEl = document.getElementById("homeDemoTyped");
       const dotEl = document.getElementById("homeDemoDot");
@@ -1409,12 +1431,14 @@
       function typeInto(text, done) {
         let i = 0;
         (function tick() {
+          if (!isActive()) return;
           typedEl.textContent = text.slice(0, i);
           if (i < text.length) {
             i++;
             setTimeout(tick, 45 + Math.random() * 40);
           } else {
             setTimeout(() => {
+              if (!isActive()) return;
               typedEl.textContent = "";
               appendLine(text, false);
               done();
@@ -1425,14 +1449,17 @@
 
       let idx = 0;
       function step() {
+        if (!isActive()) return;
         const entry = script[idx];
         const isLast = idx === script.length - 1;
         idx = isLast ? 0 : idx + 1;
         function afterEntry() {
           if (isLast) {
             setTimeout(() => {
+              if (!isActive()) return;
               dotEl.className = "slot-status-dot connecting";
               setTimeout(() => {
+                if (!isActive()) return;
                 dotEl.className = "slot-status-dot connected";
                 step();
               }, 900);
@@ -1450,15 +1477,86 @@
       }
       step();
     }
-    runHomeDemo();
+
+    const homeDemoScenes = {
+      chat: {
+        html: homeDemoSidebarHtml +
+          '<div class="chat-slot home-demo-slot">' +
+          '<div class="slot-header"><span class="slot-status-dot connected" id="homeDemoDot"></span>' +
+          '<button type="button" class="slot-server-btn" tabindex="-1">play.hypixel.net</button></div>' +
+          '<div class="slot-log" id="homeDemoLog"></div>' +
+          '<div class="home-demo-inputbar"><span id="homeDemoTyped"></span><span class="home-demo-caret"></span></div>' +
+          '</div>',
+        animate: runHomeDemoChat,
+      },
+      multi: {
+        html: homeDemoSidebarHtml +
+          '<div class="home-demo-multi-slots">' +
+          '<div class="chat-slot home-demo-slot">' +
+          '<div class="slot-header"><span class="slot-status-dot connected"></span><button type="button" class="slot-server-btn" tabindex="-1">play.hypixel.net</button></div>' +
+          '<div class="slot-log">' +
+          '<div class="line"><span class="time">21:04:12</span>&lt;Steve&gt; 사냥 가자</div>' +
+          '<div class="line line-system"><span class="time">21:04:15</span><b class="sys-tag">시스템</b> Alex님이 참가했습니다.</div>' +
+          '</div></div>' +
+          '<div class="chat-slot home-demo-slot">' +
+          '<div class="slot-header"><span class="slot-status-dot connected"></span><button type="button" class="slot-server-btn" tabindex="-1">mc.hive.com</button></div>' +
+          '<div class="slot-log">' +
+          '<div class="line"><span class="time">21:04:20</span>&lt;Notch&gt; 스카이워즈 ㄱㄱ</div>' +
+          '<div class="line"><span class="time">21:04:24</span>&lt;Herobrine&gt; 콜</div>' +
+          '</div></div>' +
+          '</div>',
+      },
+      sign: {
+        html: homeDemoSidebarHtml +
+          '<div class="chat-slot home-demo-slot">' +
+          '<div class="slot-header"><span class="slot-status-dot connected"></span><button type="button" class="slot-server-btn" tabindex="-1">play.hypixel.net</button></div>' +
+          '<div class="slot-log">' +
+          '<div class="line">&lt;나&gt; /say 안녕하세요</div>' +
+          '<div class="line line-system"><b class="sys-tag">시스템</b> 서명 완료 ✓ (RSA-SHA256)</div>' +
+          '<div class="line">[공지] 안녕하세요</div>' +
+          '</div>' +
+          '<div class="home-demo-inputbar">/say 안녕하세요</div>' +
+          '</div>',
+      },
+      trial: {
+        html: homeDemoSidebarHtml +
+          '<div class="chat-slot home-demo-slot">' +
+          '<div class="mode-toggle" style="margin-bottom:0">' +
+          '<button type="button" class="mode-toggle-btn" tabindex="-1">정식 모드</button>' +
+          '<button type="button" class="mode-toggle-btn active" tabindex="-1">체험모드</button>' +
+          '</div>' +
+          '<div class="trial-warning show" style="margin:0">⚠ 지금은 <b>웹 체험 모드</b>예요 — 프로그램 설치 없이 브라우저에서 바로 서버에 접속해볼 수 있어요.</div>' +
+          '<div class="slot-log"><div class="line line-system"><b class="sys-tag">시스템</b> 체험 모드로 play.hypixel.net에 연결되었습니다.</div></div>' +
+          '</div>',
+      },
+      anywhere: {
+        html: homeDemoSidebarHtml +
+          '<div class="chat-slot home-demo-slot home-demo-anywhere">' +
+          '<div class="home-demo-device"><span class="home-demo-device-icon">🖥️</span><div><div class="home-demo-device-name">데스크톱 클라이언트</div><div class="home-demo-device-status">play.hypixel.net에 연결됨</div></div></div>' +
+          '<div class="home-demo-device"><span class="home-demo-device-icon">🌐</span><div><div class="home-demo-device-name">브라우저 (mc.dongsoop.site)</div><div class="home-demo-device-status">동일 계정으로 접속 중</div></div></div>' +
+          '</div>',
+      },
+    };
+
+    function showHomeDemoScene(key) {
+      homeDemoGen++;
+      const myGen = homeDemoGen;
+      const stage = document.getElementById("homeDemoStage");
+      const scene = homeDemoScenes[key];
+      if (!stage || !scene) return;
+      stage.innerHTML = scene.html;
+      if (scene.animate) scene.animate(() => myGen === homeDemoGen);
+    }
+    showHomeDemoScene("chat");
 
     const heroFeatureTabs = document.getElementById("heroFeatureTabs");
     if (heroFeatureTabs) {
       heroFeatureTabs.addEventListener("click", (e) => {
         const btn = e.target.closest("button");
-        if (!btn) return;
+        if (!btn || !btn.dataset.scene) return;
         heroFeatureTabs.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
         btn.classList.add("active");
+        showHomeDemoScene(btn.dataset.scene);
       });
     }
 
