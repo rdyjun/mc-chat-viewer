@@ -386,13 +386,13 @@
      as a big "app window" screenshot (title bar + traffic lights) instead of a plain
      card, to give the homepage the same visual weight as a real product shot. */
   .home-demo-window {
-    margin: 3rem auto 0; width: 74rem; max-width: 100%; text-align: left;
+    margin: 3rem auto 0; width: 82rem; max-width: 100%; text-align: left;
     background: #0d0d10; border: 1px solid rgba(255,255,255,0.12); border-radius: 14px;
     overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06);
-    pointer-events: none;
+    pointer-events: none; display: flex; flex-direction: column; aspect-ratio: 16 / 9;
   }
   .home-demo-titlebar {
-    display: flex; align-items: center; gap: 0.5rem; padding: 0.7rem 1rem;
+    display: flex; align-items: center; gap: 0.5rem; padding: 0.7rem 1rem; flex-shrink: 0;
     background: #17171c; border-bottom: 1px solid rgba(255,255,255,0.08);
   }
   .home-demo-dot { width: 0.7rem; height: 0.7rem; border-radius: 50%; flex-shrink: 0; }
@@ -403,7 +403,7 @@
     margin-left: 0.75rem; background: #232329; border-radius: 6px; padding: 0.35rem 0.9rem;
     font-size: 0.78rem; color: #999;
   }
-  .home-demo-body { display: flex; gap: 1.25rem; padding: 1.4rem; min-height: 23rem; }
+  .home-demo-body { display: flex; gap: 1.25rem; padding: 1.4rem; flex: 1; min-height: 0; }
   .home-demo-sidebar-col { width: 13rem; flex-shrink: 0; display: flex; flex-direction: column; gap: 0.6rem; min-height: 0; }
   .home-demo-sidebar-title { font-size: 0.72rem; color: #9a9aa8; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 0.1rem; }
   .home-demo-sidebar { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; overflow: hidden; }
@@ -427,7 +427,8 @@
   .home-demo-device-name { font-weight: 600; }
   .home-demo-device-status { font-size: 0.8rem; color: #9ad; }
   @media (max-width: 900px) {
-    .home-demo-body { flex-direction: column; }
+    .home-demo-window { aspect-ratio: auto; }
+    .home-demo-body { flex-direction: column; overflow-y: auto; }
     .home-demo-sidebar-col { width: 100%; }
   }
   .trial-warning {
