@@ -101,12 +101,17 @@
     border: 1px solid var(--glass-border); border-radius: 16px; padding: 1.75rem; width: 22rem; max-width: 90vw; position: relative;
     box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,0.1);
   }
-  .modal h2 { font-size: 1.6rem; font-weight: 700; color: #fff; margin-bottom: 1rem; }
+  .modal h2 { font-size: 1.6rem; font-weight: 700; color: #fff; margin: 0 0 0.5rem; }
+  .modal-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+  .modal-subtext {
+    font-size: 0.82rem; color: #c6c6d0; margin: 0 0 1.4rem; line-height: 1.5;
+  }
   .login-modal-reason {
     font-size: 0.8rem; color: #c6c6d0; margin: 0 0 1.1rem; line-height: 1.4;
   }
   .modal-close { position: absolute; top: 0.9rem; right: 0.9rem; background: none; padding: 0.2rem 0.5rem; font-weight: normal; color: #999; }
   .modal-close:hover { color: #eee; }
+  .field-label { font-size: 0.78rem; color: #a8a8b3; margin-bottom: -0.35rem; }
   .ms-login-btn {
     display: flex; align-items: center; justify-content: center; gap: 0.5rem;
     padding: 0.75rem 1.1rem; border-radius: 8px; background: var(--accent); color: var(--accent-text);
@@ -217,7 +222,8 @@
   }
   button:hover { filter: brightness(1.08); }
   button:disabled { background: #4a4a52; color: #999; cursor: not-allowed; filter: none; }
-  #addServerForm { display: flex; flex-direction: column; gap: 0.6rem; }
+  #addServerForm { display: flex; flex-direction: column; gap: 0.8rem; }
+  #addServerForm button[type="submit"] { margin-top: 0.5rem; padding: 0.75rem 0.9rem; }
   .slot-picker-list { display: flex; flex-direction: column; gap: 0.5rem; }
   .slot-pick-btn { width: 100%; text-align: left; font-weight: normal; }
   .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
@@ -275,7 +281,7 @@
   .slot-connect-btn.disconnect-mode:hover { background: rgba(224,84,74,0.28); }
   .slot-server-picker { position: relative; flex: 1; min-width: 0; }
   .slot-server-btn {
-    width: 100%; text-align: left; background-color: rgba(255,255,255,0.06); color: #eee; border: 1px solid var(--glass-border); border-radius: 8px;
+    width: 100%; box-sizing: border-box; min-height: 2.2rem; text-align: left; background-color: rgba(255,255,255,0.06); color: #eee; border: 1px solid var(--glass-border); border-radius: 8px;
     padding: 0.55rem 1.9rem 0.55rem 0.85rem; font-size: 0.82rem; font-weight: 600; cursor: pointer;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23999' d='M4 6l4 4 4-4z'/%3E%3C/svg%3E");
@@ -295,7 +301,7 @@
   .slot-server-menu .item.selected { background: rgba(155,93,229,0.18); color: var(--accent); font-weight: bold; }
   .slot-server-menu .empty { padding: 0.65rem 0.9rem; font-size: 0.8rem; color: #888; }
   .slot-status-dot {
-    flex-shrink: 0; width: 0.6rem; height: 0.6rem; border-radius: 50%; cursor: help;
+    flex-shrink: 0; width: 0.6rem; height: 0.6rem; border-radius: 50%; margin: 0 0.5rem;
     background: #888; box-shadow: 0 0 0 3px rgba(255,255,255,0.04);
     transition: background-color 0.2s;
   }
@@ -307,6 +313,38 @@
     0%, 100% { opacity: 1; }
     50% { opacity: 0.4; }
   }
+  /* Rendered once, appended at document level (not nested under the scrolling chat
+     grid) and repositioned via JS on hover — this is what keeps it from being
+     clipped by .chat-grid's overflow:auto like an in-place absolute tooltip would. */
+  .slot-status-tooltip {
+    display: none; position: fixed; transform: translateX(-50%);
+    z-index: 300; width: 13rem; padding: 0.4rem 1rem 0.75rem; border-radius: 12px;
+    background: rgba(30,30,38,0.96); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(255,255,255,0.14); box-shadow: 0 12px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+    font-size: 0.8rem; color: #e4e4ea; cursor: default;
+    animation: slot-status-tooltip-in 0.12s ease-out;
+  }
+  @keyframes slot-status-tooltip-in {
+    from { opacity: 0; transform: translateX(-50%) translateY(-3px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+  .slot-status-tooltip::before {
+    content: ""; position: absolute; top: -6px; left: 50%; margin-left: -6px;
+    width: 12px; height: 12px; background: rgba(30,30,38,0.96);
+    border-left: 1px solid rgba(255,255,255,0.14); border-top: 1px solid rgba(255,255,255,0.14);
+    transform: rotate(45deg); border-radius: 2px 0 0 0;
+  }
+  .slot-status-tooltip-title {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.02em; color: #9a9aa8;
+    text-transform: uppercase; padding: 0.7rem 0 0.5rem; margin-bottom: 0.35rem;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .slot-status-tooltip .row { display: flex; align-items: center; gap: 0.55rem; padding: 0.3rem 0; }
+  .slot-status-tooltip .dot { flex-shrink: 0; width: 0.55rem; height: 0.55rem; border-radius: 50%; }
+  .slot-status-tooltip .dot.idle { background: #888; }
+  .slot-status-tooltip .dot.connecting { background: #e0a83a; }
+  .slot-status-tooltip .dot.connected { background: #4caf50; }
+  .slot-status-tooltip .dot.disconnected { background: #e0544a; }
   .slot-log { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.28); border-radius: 8px; padding: 0.6rem 0.8rem; min-height: 0; }
   .slot-chat-form { display: flex; gap: 0.5rem; }
   .line { padding: 0.2rem 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.9rem; word-break: break-word; }
@@ -410,9 +448,13 @@
   <div class="modal-backdrop" id="addServerModalBackdrop">
     <div class="modal">
       <button type="button" class="modal-close" id="addServerModalClose">✕</button>
+      <div class="modal-icon">➕</div>
       <h2 data-i18n="addServerModalTitle">서버 추가</h2>
+      <p class="modal-subtext" data-i18n="addServerModalDesc">채팅을 보고 싶은 서버의 주소와 버전을 입력하세요.</p>
       <form id="addServerForm">
+        <label class="field-label" data-i18n="hostLabel">서버 주소</label>
         <input name="host" placeholder="서버 주소 (예: domain.com:25565)" data-i18n-placeholder="hostPlaceholder" required />
+        <label class="field-label" data-i18n="versionLabel">버전</label>
         <input name="version" placeholder="버전 (예: 26.1.2 또는 775)" data-i18n-placeholder="versionPlaceholder" required />
         <button type="submit" data-i18n="addBtn">추가</button>
       </form>
@@ -464,6 +506,14 @@
         <button type="button" class="btn-danger" id="disconnectConfirmProceedBtn" data-i18n="disconnectConfirmProceed">연결 해제</button>
       </div>
     </div>
+  </div>
+
+  <div class="slot-status-tooltip" id="slotStatusTooltip">
+    <div class="slot-status-tooltip-title" data-i18n="statusLegendTitle">연결 상태</div>
+    <div class="row"><span class="dot idle"></span><span data-i18n="statusLegendIdle">미연결</span></div>
+    <div class="row"><span class="dot connecting"></span><span data-i18n="statusLegendConnecting">연결 중</span></div>
+    <div class="row"><span class="dot connected"></span><span data-i18n="statusLegendConnected">연결됨</span></div>
+    <div class="row"><span class="dot disconnected"></span><span data-i18n="statusLegendDisconnected">연결 끊김/오류</span></div>
   </div>
 
   <div class="view active" id="homeView">
@@ -553,6 +603,9 @@
         logoutBtn: "로그아웃",
         msLoginBtn: "Microsoft로 로그인",
         addServerModalTitle: "서버 추가",
+        addServerModalDesc: "채팅을 보고 싶은 서버의 주소와 버전을 입력하세요.",
+        hostLabel: "서버 주소",
+        versionLabel: "버전",
         hostPlaceholder: "서버 주소 (예: domain.com:25565)",
         versionPlaceholder: "버전 (예: 26.1.2 또는 775)",
         addBtn: "추가",
@@ -597,7 +650,11 @@
         sendBtn: "전송",
         selectBtn: "선택",
         slotMenuEmpty: "등록된 서버가 없습니다.",
-        slotStatusLegend: "⚪ 미연결 · 🟡 연결 중 · 🟢 연결됨 · 🔴 연결 끊김/오류",
+        statusLegendTitle: "연결 상태",
+        statusLegendIdle: "미연결",
+        statusLegendConnecting: "연결 중",
+        statusLegendConnected: "연결됨",
+        statusLegendDisconnected: "연결 끊김/오류",
         serverGridEmpty: "등록된 서버가 없습니다. Play 탭에서 추가해보세요.",
         goToPlayBtn: "Play로 이동",
         pingChecking: "확인 중...",
@@ -622,6 +679,9 @@
         logoutBtn: "Log out",
         msLoginBtn: "Log in with Microsoft",
         addServerModalTitle: "Add Server",
+        addServerModalDesc: "Enter the address and version of the server whose chat you want to view.",
+        hostLabel: "Server address",
+        versionLabel: "Version",
         hostPlaceholder: "Server address (e.g. domain.com:25565)",
         versionPlaceholder: "Version (e.g. 26.1.2 or 775)",
         addBtn: "Add",
@@ -666,7 +726,11 @@
         sendBtn: "Send",
         selectBtn: "Select",
         slotMenuEmpty: "No servers registered.",
-        slotStatusLegend: "⚪ Not connected · 🟡 Connecting · 🟢 Connected · 🔴 Disconnected/Error",
+        statusLegendTitle: "Connection Status",
+        statusLegendIdle: "Not connected",
+        statusLegendConnecting: "Connecting",
+        statusLegendConnected: "Connected",
+        statusLegendDisconnected: "Disconnected/Error",
         serverGridEmpty: "No servers registered. Add one from the Play tab.",
         goToPlayBtn: "Go to Play",
         pingChecking: "Checking...",
@@ -998,6 +1062,24 @@
       if (e.target === disconnectConfirmBackdrop) closeDisconnectConfirm(false);
     });
 
+    // Single shared tooltip, appended at document level rather than nested inside
+    // a slot — .chat-grid scrolls (overflow: auto), so a tooltip positioned
+    // absolute/relative to the dot would get clipped by that scroll container.
+    // Instead this one lives outside it and is repositioned under the hovered
+    // dot with fixed coordinates computed from its bounding rect.
+    const slotStatusTooltip = document.getElementById("slotStatusTooltip");
+
+    function showStatusTooltip(anchorEl) {
+      const rect = anchorEl.getBoundingClientRect();
+      slotStatusTooltip.style.display = "block";
+      slotStatusTooltip.style.left = (rect.left + rect.width / 2) + "px";
+      slotStatusTooltip.style.top = (rect.bottom + 8) + "px";
+    }
+
+    function hideStatusTooltip() {
+      slotStatusTooltip.style.display = "none";
+    }
+
     let account = { status: "logged-out" };
     let servers = [];
     let serversLoaded = false; // 서버 목록을 아직 한 번도 못 받아왔으면(HTTP/WS 둘 다) true로 안 바뀜 — 그동안은 스켈레톤을 보여준다
@@ -1259,7 +1341,7 @@
         div.className = "chat-slot";
         div.innerHTML =
           '<div class="slot-header">' +
-          '<span class="slot-status-dot idle" title="' + escapeHtml(t("slotStatusLegend")) + '"></span>' +
+          '<span class="slot-status-dot idle"></span>' +
           '<div class="slot-server-picker"><button type="button" class="slot-server-btn">' + t("serverSelectPlaceholder") + '</button><div class="slot-server-menu"></div></div>' +
           '<button type="button" class="slot-connect-btn" disabled>' + t("connectBtn") + '</button>' +
           '</div>' +
@@ -1274,6 +1356,9 @@
         const logEl = div.querySelector(".slot-log");
         const formEl = div.querySelector("form");
         const inputEl = div.querySelector("input");
+
+        statusDotEl.addEventListener("mouseenter", () => showStatusTooltip(statusDotEl));
+        statusDotEl.addEventListener("mouseleave", hideStatusTooltip);
 
         btnEl.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -1426,7 +1511,7 @@
       slotRefs.forEach((ref, i) => {
         ref.btnEl.classList.toggle("skeleton", !serversLoaded);
         if (!serversLoaded) {
-          ref.btnEl.textContent = "";
+          ref.btnEl.textContent = t("serverSelectPlaceholder");
           ref.menuEl.innerHTML = "";
           return;
         }
