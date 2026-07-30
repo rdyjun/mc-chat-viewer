@@ -292,7 +292,19 @@
   .slot-server-menu .item:hover { background: rgba(255,255,255,0.08); }
   .slot-server-menu .item.selected { background: rgba(155,93,229,0.18); color: var(--accent); font-weight: bold; }
   .slot-server-menu .empty { padding: 0.65rem 0.9rem; font-size: 0.8rem; color: #888; }
-  .slot-status { font-size: 0.78rem; color: #9ad; white-space: nowrap; }
+  .slot-status-dot {
+    flex-shrink: 0; width: 0.6rem; height: 0.6rem; border-radius: 50%; cursor: help;
+    background: #888; box-shadow: 0 0 0 3px rgba(255,255,255,0.04);
+    transition: background-color 0.2s;
+  }
+  .slot-status-dot.idle { background: #888; }
+  .slot-status-dot.connecting { background: #e0a83a; animation: slot-status-pulse 1.2s ease-in-out infinite; }
+  .slot-status-dot.connected { background: #4caf50; }
+  .slot-status-dot.disconnected { background: #e0544a; }
+  @keyframes slot-status-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
   .slot-log { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.28); border-radius: 8px; padding: 0.6rem 0.8rem; min-height: 0; }
   .slot-chat-form { display: flex; gap: 0.5rem; }
   .line { padding: 0.2rem 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.9rem; word-break: break-word; }
@@ -329,6 +341,10 @@
   .gate-modal p { color: #c6c6d0; font-size: 0.88rem; line-height: 1.5; margin: 0 0 1.4rem; }
   .gate-buttons { display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap; }
   .gate-buttons a, .gate-buttons button { padding: 0.75rem 1.4rem; font-size: 0.88rem; border-radius: 10px; text-decoration: none; }
+  .btn-secondary { background: rgba(255,255,255,0.1); color: #eee; }
+  .btn-secondary:hover { background: rgba(255,255,255,0.18); }
+  .btn-danger { background: #d9534f; color: #fff; box-shadow: 0 6px 18px rgba(217,83,79,0.35); }
+  .btn-danger:hover { background: #c9433f; }
 
   .appFooter {
     display: flex; justify-content: center; align-items: center; gap: 1rem;
@@ -418,6 +434,19 @@
       <div class="gate-buttons">
         <a class="btn-download" id="gateDownloadBtn" href="https://github.com/rdyjun/mc-chat-viewer/releases/latest/download/MinePortal-win.zip">⬇ 다운로드</a>
         <script>applyDownloadAvailability(document.getElementById("gateDownloadBtn"));</script>
+      </div>
+    </div>
+  </div>
+
+  <div class="gate-backdrop" id="banWarningBackdrop">
+    <div class="gate-modal">
+      <button type="button" class="gate-close" id="banWarningCloseBtn">✕</button>
+      <div class="gate-icon">⚠️</div>
+      <h2 data-i18n="banWarningTitle">밴 위험을 알려드려요</h2>
+      <p data-i18n-html="banWarningTextHtml">지금은 <b>웹 체험 모드</b>예요. 이 방식은 서버가 대신 접속을 대리해주는 방식이라, 공인/실서버에 접속하면 "동일 IP 다중 접속" 등으로 인식되어 <b>밴(차단)</b>될 수 있어요.<br />그럼에도 접속하시겠습니까?</p>
+      <div class="gate-buttons">
+        <button type="button" class="btn-secondary" id="banWarningCancelBtn" data-i18n="banWarningCancel">취소</button>
+        <button type="button" class="btn-danger" id="banWarningProceedBtn" data-i18n="banWarningProceed">그래도 접속</button>
       </div>
     </div>
   </div>
@@ -529,6 +558,10 @@
         modeReal: "정식 모드",
         modeTrial: "체험모드",
         trialWarningHtml: "⚠ 지금은 <b>웹 체험 모드</b>예요. 이 방식은 서버가 대신 접속을 대리해주는 방식이라, 공인/실서버에 접속하면 \"동일 IP 다중 접속\" 등으로 인식되어 <b>밴(차단)</b>될 수 있어요. 데스크톱 클라이언트를 사용하면 이 문제 없이 <b>정식 모드</b>로 플레이할 수 있어요.",
+        banWarningTitle: "밴 위험을 알려드려요",
+        banWarningTextHtml: "지금은 <b>웹 체험 모드</b>예요. 이 방식은 서버가 대신 접속을 대리해주는 방식이라, 공인/실서버에 접속하면 \"동일 IP 다중 접속\" 등으로 인식되어 <b>밴(차단)</b>될 수 있어요.<br />그럼에도 접속하시겠습니까?",
+        banWarningCancel: "취소",
+        banWarningProceed: "그래도 접속",
         exploreTitle: "서버 탐색",
         serverListTitle: "서버 목록",
         addServerBtn: "+ 서버 추가",
@@ -544,6 +577,7 @@
         sendBtn: "전송",
         selectBtn: "선택",
         slotMenuEmpty: "등록된 서버가 없습니다.",
+        slotStatusLegend: "⚪ 미연결 · 🟡 연결 중 · 🟢 연결됨 · 🔴 연결 끊김/오류",
         serverGridEmpty: "등록된 서버가 없습니다. Play 탭에서 추가해보세요.",
         goToPlayBtn: "Play로 이동",
         pingChecking: "확인 중...",
@@ -588,6 +622,10 @@
         modeReal: "Full Mode",
         modeTrial: "Trial Mode",
         trialWarningHtml: "⚠ You're in <b>web trial mode</b>. Since the server relays your connection on your behalf, official/public servers may flag it as \"multiple connections from the same IP\" and <b>ban</b> you. Use the desktop client to play in <b>Full Mode</b> without this risk.",
+        banWarningTitle: "Ban risk warning",
+        banWarningTextHtml: "You're in <b>web trial mode</b>. Since the server relays your connection on your behalf, official/public servers may flag it as \"multiple connections from the same IP\" and <b>ban</b> you.<br />Do you still want to connect?",
+        banWarningCancel: "Cancel",
+        banWarningProceed: "Connect anyway",
         exploreTitle: "Discover Servers",
         serverListTitle: "Server List",
         addServerBtn: "+ Add Server",
@@ -603,6 +641,7 @@
         sendBtn: "Send",
         selectBtn: "Select",
         slotMenuEmpty: "No servers registered.",
+        slotStatusLegend: "⚪ Not connected · 🟡 Connecting · 🟢 Connected · 🔴 Disconnected/Error",
         serverGridEmpty: "No servers registered. Add one from the Play tab.",
         goToPlayBtn: "Go to Play",
         pingChecking: "Checking...",
@@ -874,6 +913,36 @@
       if (e.target === playGateBackdrop) closePlayGate();
     });
 
+    // Confirmation modal shown before connecting to a server while in 체험모드 (trial mode),
+    // since the relay-based connection can get the player's real IP banned on official servers.
+    const banWarningBackdrop = document.getElementById("banWarningBackdrop");
+    const banWarningCloseBtn = document.getElementById("banWarningCloseBtn");
+    const banWarningCancelBtn = document.getElementById("banWarningCancelBtn");
+    const banWarningProceedBtn = document.getElementById("banWarningProceedBtn");
+    let banWarningResolve = null;
+
+    function closeBanWarning(confirmed) {
+      banWarningBackdrop.classList.remove("open");
+      if (banWarningResolve) {
+        const resolve = banWarningResolve;
+        banWarningResolve = null;
+        resolve(confirmed);
+      }
+    }
+
+    function confirmTrialConnect() {
+      if (currentPlayMode !== "trial") return Promise.resolve(true);
+      banWarningBackdrop.classList.add("open");
+      return new Promise((resolve) => { banWarningResolve = resolve; });
+    }
+
+    banWarningCloseBtn.addEventListener("click", () => closeBanWarning(false));
+    banWarningCancelBtn.addEventListener("click", () => closeBanWarning(false));
+    banWarningProceedBtn.addEventListener("click", () => closeBanWarning(true));
+    banWarningBackdrop.addEventListener("click", (e) => {
+      if (e.target === banWarningBackdrop) closeBanWarning(false);
+    });
+
     let account = { status: "logged-out" };
     let servers = [];
     let serversLoaded = false; // 서버 목록을 아직 한 번도 못 받아왔으면(HTTP/WS 둘 다) true로 안 바뀜 — 그동안은 스켈레톤을 보여준다
@@ -881,6 +950,7 @@
     let slots = [{ serverId: null }]; // one entry per visible chat-grid slot
     let slotRefs = []; // DOM refs parallel to `slots`, rebuilt whenever the layout changes
     let desktopAvailable = false;
+    let currentPlayMode = null;
 
     function showTab(tab) {
       homeView.classList.toggle("active", tab === "home");
@@ -899,6 +969,7 @@
         openPlayGate();
         return;
       }
+      currentPlayMode = mode;
       modeRealBtn.classList.toggle("active", mode === "real");
       modeTrialBtn.classList.toggle("active", mode === "trial");
       trialWarning.classList.toggle("show", mode === "trial");
@@ -954,6 +1025,22 @@
           badge.classList.add("offline");
         }
       });
+    }
+
+    // Maps a raw status string (from ServerConfig.status on the backend: "idle",
+    // "connecting", "connected", or "disconnected: <reason>") to one of the four
+    // dot colors/states shown next to the slot's server picker.
+    function statusDotState(status) {
+      if (status === "connecting") return "connecting";
+      if (status === "connected") return "connected";
+      if (status && status.startsWith("disconnected")) return "disconnected";
+      return "idle";
+    }
+
+    function setSlotStatusDot(dotEl, status) {
+      if (!dotEl) return;
+      dotEl.classList.remove("idle", "connecting", "connected", "disconnected");
+      dotEl.classList.add(statusDotState(status));
     }
 
     function connectLabel(s) {
@@ -1117,9 +1204,9 @@
         div.className = "chat-slot";
         div.innerHTML =
           '<div class="slot-header">' +
+          '<span class="slot-status-dot idle" title="' + escapeHtml(t("slotStatusLegend")) + '"></span>' +
           '<div class="slot-server-picker"><button type="button" class="slot-server-btn">' + t("serverSelectPlaceholder") + '</button><div class="slot-server-menu"></div></div>' +
           '<button type="button" class="slot-connect-btn" disabled>' + t("connectBtn") + '</button>' +
-          '<span class="slot-status"></span>' +
           '</div>' +
           '<div class="slot-log"></div>' +
           '<form class="slot-chat-form"><input placeholder="' + escapeHtml(t("chatInputPlaceholder")) + '" style="flex:1" /><button type="submit">' + t("sendBtn") + '</button></form>';
@@ -1128,7 +1215,7 @@
         const btnEl = div.querySelector(".slot-server-btn");
         const menuEl = div.querySelector(".slot-server-menu");
         const connectBtnEl = div.querySelector(".slot-connect-btn");
-        const statusEl = div.querySelector(".slot-status");
+        const statusDotEl = div.querySelector(".slot-status-dot");
         const logEl = div.querySelector(".slot-log");
         const formEl = div.querySelector("form");
         const inputEl = div.querySelector("input");
@@ -1194,7 +1281,7 @@
           inputEl.value = "";
         });
 
-        return { btnEl, menuEl, connectBtnEl, statusEl, logEl, formEl, inputEl };
+        return { btnEl, menuEl, connectBtnEl, statusDotEl, logEl, formEl, inputEl };
       });
       refreshSlotMenus();
       slots.forEach((_, i) => loadSlotDetail(i));
@@ -1220,6 +1307,7 @@
     async function connectServerInSlot(i) {
       const serverId = slots[i] && slots[i].serverId;
       if (!serverId) return;
+      if (!(await confirmTrialConnect())) return;
       await ensureWs();
       const res = await fetch("/api/servers/" + serverId + "/connect", { method: "POST" });
       if (!res.ok) {
@@ -1281,14 +1369,14 @@
       const serverId = slots[i] && slots[i].serverId;
       if (!ref) return;
       if (!serverId) {
-        ref.statusEl.textContent = "";
+        setSlotStatusDot(ref.statusDotEl, null);
         ref.logEl.innerHTML = "";
         return;
       }
       const res = await fetch("/api/servers/" + serverId);
       if (!res.ok) return;
       const detail = await res.json();
-      ref.statusEl.textContent = detail.status;
+      setSlotStatusDot(ref.statusDotEl, detail.status);
       ref.logEl.innerHTML = "";
       const history = detail.statusHistory.map((h) => ({ timestamp: h.timestamp, text: h.status, system: true }));
       const chat = detail.messages.map((m) => ({ timestamp: m.timestamp, text: m.message, system: false }));
@@ -1303,7 +1391,7 @@
         const ref = slotRefs[i];
         if (!ref) return;
         if (payload.type === "status") {
-          ref.statusEl.textContent = payload.status;
+          setSlotStatusDot(ref.statusDotEl, payload.status);
           updateSlotConnectBtn(i);
           if (payload.logged) addLineTo(ref.logEl, payload.status, payload.timestamp, true);
         } else if (payload.type === "chat") {
@@ -1346,6 +1434,7 @@
     });
 
     async function connectServer(id) {
+      if (!(await confirmTrialConnect())) return;
       await ensureWs();
       const res = await fetch("/api/servers/" + id + "/connect", { method: "POST" });
       if (!res.ok) {
