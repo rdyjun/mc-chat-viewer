@@ -1362,6 +1362,7 @@
 
         btnEl.addEventListener("click", (e) => {
           e.stopPropagation();
+          if (!serversLoaded) return;
           const isOpen = menuEl.classList.contains("open");
           closeAllSlotMenus();
           if (!isOpen) menuEl.classList.add("open");
@@ -1640,6 +1641,7 @@
     }
 
     setLayout(1);
+    renderServers(); // 첫 fetch가 끝나기 전(serversLoaded=false)에도 사이드바/슬롯 select가 바로 스켈레톤을 보여주도록
 
     addServerForm.addEventListener("submit", async (e) => {
       e.preventDefault();
