@@ -130,7 +130,7 @@
     content: "";
     position: absolute; z-index: -1;
     top: 70%; left: 50%; transform: translate(-50%, -50%);
-    width: 34rem; height: 34rem; max-width: 90vw;
+    width: 52rem; height: 52rem; max-width: 120vw;
     border-radius: 50%;
     background: radial-gradient(circle, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 70%);
   }
@@ -150,11 +150,22 @@
     margin-top: 2.5rem; padding-top: 1.1rem; border-top: 1px solid rgba(255,255,255,0.08);
   }
   .hero-feature-tabs button {
+    position: relative; overflow: hidden;
     background: none; border: none; color: #888; font-size: 0.85rem;
     padding: 0.55rem 1rem; border-radius: 8px; cursor: pointer; transition: background 0.15s, color 0.15s;
   }
   .hero-feature-tabs button:hover { color: #ddd; }
   .hero-feature-tabs button.active { color: #fff; background: rgba(255,255,255,0.08); font-weight: 600; }
+  .hero-feature-tabs .tab-label { position: relative; z-index: 1; }
+  .hero-feature-tabs .tab-fill {
+    position: absolute; left: 0; bottom: 0; height: 2px; width: 0%;
+    background: rgba(255,255,255,0.85);
+  }
+  .hero-feature-tabs .tab-fill.filling { animation: tab-fill-sweep var(--tab-duration, 4500ms) linear forwards; }
+  @keyframes tab-fill-sweep {
+    from { width: 0%; }
+    to { width: 100%; }
+  }
   .hero-buttons a, .hero-buttons button { padding: 0.85rem 1.6rem; font-size: 0.95rem; border-radius: 10px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; transition: transform 0.15s, filter 0.15s; }
   .hero-buttons a:hover, .hero-buttons button:hover { transform: translateY(-1px); filter: brightness(1.08); }
   .btn-download { background: var(--accent); color: var(--accent-text); box-shadow: 0 6px 18px rgba(155,93,229,0.3); }
@@ -609,11 +620,11 @@
       <div class="hero-note" id="desktopStatusNote" data-i18n="desktopNoteDefault">데스크톱 프로그램은 내 PC에서 직접 접속해 IP 제한이 있는 서버에서도 안정적으로 동작해요.</div>
 
       <div class="hero-feature-tabs" id="heroFeatureTabs">
-        <button type="button" data-scene="multi" data-i18n="featureTab1">멀티 서버 동시 접속</button>
-        <button type="button" class="active" data-scene="chat" data-i18n="featureTab2">실시간 채팅 확인</button>
-        <button type="button" data-scene="sign" data-i18n="featureTab3">명령어 서명 지원</button>
-        <button type="button" data-scene="trial" data-i18n="featureTab4">브라우저에서 바로 체험</button>
-        <button type="button" data-scene="anywhere" data-i18n="featureTab5">어디서든 접속</button>
+        <button type="button" class="active" data-scene="multi"><span class="tab-label" data-i18n="featureTab1">멀티 서버 동시 접속</span><span class="tab-fill"></span></button>
+        <button type="button" data-scene="chat"><span class="tab-label" data-i18n="featureTab2">실시간 채팅 확인</span><span class="tab-fill"></span></button>
+        <button type="button" data-scene="sign"><span class="tab-label" data-i18n="featureTab3">명령어 서명 지원</span><span class="tab-fill"></span></button>
+        <button type="button" data-scene="trial"><span class="tab-label" data-i18n="featureTab4">브라우저에서 바로 체험</span><span class="tab-fill"></span></button>
+        <button type="button" data-scene="anywhere"><span class="tab-label" data-i18n="featureTab5">어디서든 접속</span><span class="tab-fill"></span></button>
       </div>
     </div>
 
@@ -622,7 +633,7 @@
         <span class="home-demo-dot red"></span>
         <span class="home-demo-dot yellow"></span>
         <span class="home-demo-dot green"></span>
-        <div class="home-demo-tab">mc.dongsoop.site/play</div>
+        <div class="home-demo-tab">mineportal.kr/play</div>
       </div>
       <div class="home-demo-body" id="homeDemoStage">
         <div class="home-demo-sidebar-col">
@@ -1534,7 +1545,7 @@
         html: homeDemoSidebarHtml +
           '<div class="chat-slot home-demo-slot home-demo-anywhere">' +
           '<div class="home-demo-device"><span class="home-demo-device-icon">🖥️</span><div><div class="home-demo-device-name">데스크톱 클라이언트</div><div class="home-demo-device-status">play.hypixel.net에 연결됨</div></div></div>' +
-          '<div class="home-demo-device"><span class="home-demo-device-icon">🌐</span><div><div class="home-demo-device-name">브라우저 (mc.dongsoop.site)</div><div class="home-demo-device-status">동일 계정으로 접속 중</div></div></div>' +
+          '<div class="home-demo-device"><span class="home-demo-device-icon">🌐</span><div><div class="home-demo-device-name">브라우저 (mineportal.kr)</div><div class="home-demo-device-status">동일 계정으로 접속 중</div></div></div>' +
           '</div>',
       },
     };
@@ -1548,17 +1559,48 @@
       stage.innerHTML = scene.html;
       if (scene.animate) scene.animate(() => myGen === homeDemoGen);
     }
-    showHomeDemoScene("chat");
-
     const heroFeatureTabs = document.getElementById("heroFeatureTabs");
-    if (heroFeatureTabs) {
+    const featureTabButtons = heroFeatureTabs ? Array.from(heroFeatureTabs.querySelectorAll("button")) : [];
+    const FEATURE_TAB_DURATION_MS = 4500;
+    let featureTabTimer = null;
+    let featureTabIndex = 0;
+
+    function activateFeatureTab(index, restartAutoplay) {
+      const btn = featureTabButtons[index];
+      if (!btn) return;
+      featureTabIndex = index;
+      featureTabButtons.forEach((b) => {
+        b.classList.remove("active");
+        const fill = b.querySelector(".tab-fill");
+        fill.classList.remove("filling");
+        fill.style.width = "0%";
+      });
+      btn.classList.add("active");
+      showHomeDemoScene(btn.dataset.scene);
+      // 리플로우를 강제해서 filling 클래스를 다시 붙였을 때 애니메이션이 처음부터
+      // 다시 재생되게 한다(클래스를 그냥 다시 추가만 하면 브라우저가 "이미 붙어있던
+      // 클래스"로 보고 애니메이션을 재시작하지 않는 경우가 있다).
+      const fill = btn.querySelector(".tab-fill");
+      void fill.offsetWidth;
+      fill.classList.add("filling");
+
+      if (restartAutoplay !== false) {
+        if (featureTabTimer) clearTimeout(featureTabTimer);
+        featureTabTimer = setTimeout(() => {
+          activateFeatureTab((featureTabIndex + 1) % featureTabButtons.length);
+        }, FEATURE_TAB_DURATION_MS);
+      }
+    }
+
+    if (heroFeatureTabs && featureTabButtons.length) {
       heroFeatureTabs.addEventListener("click", (e) => {
         const btn = e.target.closest("button");
         if (!btn || !btn.dataset.scene) return;
-        heroFeatureTabs.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        showHomeDemoScene(btn.dataset.scene);
+        activateFeatureTab(featureTabButtons.indexOf(btn));
       });
+      activateFeatureTab(0);
+    } else {
+      showHomeDemoScene("chat");
     }
 
     function escapeHtml(s) {
@@ -1744,6 +1786,12 @@
           }
           const message = inputEl.value.trim();
           if (!message) return;
+          if (isNativeApp()) {
+            const ok = await nativeSendChat(serverId, message);
+            if (!ok) return;
+            inputEl.value = "";
+            return;
+          }
           const res = await fetch("/api/servers/" + serverId + "/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -1797,6 +1845,11 @@
       const serverId = slots[i] && slots[i].serverId;
       if (!serverId) return;
       if (!(await confirmTrialConnect())) return;
+      if (isNativeApp()) {
+        const ok = await nativeConnect(serverId);
+        if (ok) { renderServers(); loadSlotDetail(i); }
+        return;
+      }
       await ensureWs();
       const res = await fetch("/api/servers/" + serverId + "/connect", { method: "POST" });
       if (!res.ok) {
@@ -1817,6 +1870,12 @@
       const serverId = slots[i] && slots[i].serverId;
       if (!serverId) return;
       if (!(await confirmDisconnect())) return;
+      if (isNativeApp()) {
+        await nativeDisconnect(serverId);
+        renderServers();
+        loadSlotDetail(i);
+        return;
+      }
       const res = await fetch("/api/servers/" + serverId + "/disconnect", { method: "POST" });
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: res.statusText }));
@@ -1874,6 +1933,13 @@
       if (!serverId) {
         setSlotStatusDot(ref.statusDotEl, null);
         ref.logEl.innerHTML = "";
+        return;
+      }
+      if (isNativeApp()) {
+        const s = servers.find((x) => x.id === serverId);
+        setSlotStatusDot(ref.statusDotEl, s ? s.status : null);
+        ref.logEl.innerHTML = "";
+        (nativeMessages[serverId] || []).forEach((m) => addLineTo(ref.logEl, m.message, m.timestamp, m.system));
         return;
       }
       const res = await fetch("/api/servers/" + serverId);
@@ -2067,6 +2133,136 @@
     }
 
     initAccountAndServers();
+
+    // --- 앱(Capacitor) 전용: 백엔드를 거치지 않고 기기에서 마인크래프트 서버로 직접
+    // 접속하는 경로. 서버 목록/계정 표시는 지금처럼 백엔드 REST(/api/servers, /api/account)를
+    // 그대로 쓰지만(기기 간 동기화 유지), 실제 소켓 연결·로그인·채팅 송수신은
+    // McConnection 네이티브 플러그인이 기기 안에서 처리한다 — 마크 계정 토큰과 채팅
+    // 서명 개인키가 백엔드로 나가지 않는다.
+    function isNativeApp() {
+      return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+    }
+
+    const McNative = isNativeApp() ? window.Capacitor.Plugins.McConnection : null;
+    // serverId -> 화면에 그릴 라인들. 백엔드 연결과 달리 이 기록은 기기 로컬에만 있고
+    // 새로고침하면 사라진다(연결 자체가 그때그때 새로 맺어지는 세션이라 히스토리를
+    // 서버가 대신 들고 있어줄 필요가 없음).
+    const nativeMessages = {};
+
+    function nativeAppendLine(serverId, text, system) {
+      const list = (nativeMessages[serverId] ||= []);
+      const entry = { message: text, timestamp: Date.now(), system: !!system };
+      list.push(entry);
+      if (list.length > 500) list.shift();
+      const idx = slots.findIndex((slot) => slot.serverId === serverId);
+      if (idx !== -1 && slotRefs[idx]) addLineTo(slotRefs[idx].logEl, entry.message, entry.timestamp, entry.system);
+    }
+
+    if (McNative) {
+      McNative.addListener("chatReceived", (data) => {
+        nativeAppendLine(data.serverId, data.text, false);
+      });
+      McNative.addListener("statusChanged", (data) => {
+        const s = servers.find((x) => x.id === data.serverId);
+        if (s) {
+          s.connected = !!data.connected;
+          s.phase = data.connected ? "active" : "closed";
+          s.status = data.status;
+          renderServers();
+        }
+        const idx = slots.findIndex((slot) => slot.serverId === data.serverId);
+        if (idx !== -1 && slotRefs[idx]) {
+          setSlotStatusDot(slotRefs[idx].statusDotEl, data.status);
+          updateSlotConnectBtn(idx);
+        }
+        nativeAppendLine(data.serverId, data.status, true);
+      });
+    }
+
+    async function nativeConnect(serverId) {
+      const server = servers.find((x) => x.id === serverId);
+      if (!server) return false;
+      if (!nativeAccount.loggedIn) {
+        const ok = await nativeLogin();
+        if (!ok) return false;
+      }
+      server.phase = "active";
+      server.connected = false;
+      server.status = "connecting";
+      renderServers();
+      try {
+        await McNative.connect({ serverId, host: server.host, port: server.port });
+        return true;
+      } catch (e) {
+        server.phase = "closed";
+        server.status = "idle";
+        renderServers();
+        alert(t("alertConnectFailed", { error: (e && e.message) || String(e) }));
+        return false;
+      }
+    }
+
+    async function nativeDisconnect(serverId) {
+      try {
+        await McNative.disconnect({ serverId });
+      } catch (e) {
+        // 이미 끊어져 있었을 수도 있음 — 조용히 무시.
+      }
+    }
+
+    async function nativeSendChat(serverId, message) {
+      try {
+        await McNative.sendChat({ serverId, message });
+        return true;
+      } catch (e) {
+        alert(t("alertSendFailed", { error: (e && e.message) || String(e) }));
+        return false;
+      }
+    }
+
+    // 앱 전용 마크 로그인 상태 — 웹의 account(백엔드 세션 기반 OAuth)와는 별개로,
+    // 기기 안에서 MinecraftAuth 디바이스 코드 플로우로 로그인한다.
+    const nativeAccount = { loggedIn: false, name: null };
+
+    async function nativeLogin() {
+      try {
+        const restored = await McNative.restoreSession();
+        if (restored.restored) {
+          nativeAccount.loggedIn = true;
+          nativeAccount.name = restored.name;
+          return true;
+        }
+      } catch (e) { /* 무시하고 새 로그인으로 진행 */ }
+
+      let removeListener = null;
+      try {
+        removeListener = await McNative.addListener("deviceCode", (data) => {
+          alert(
+            (lang === "ko"
+              ? "마이크로소프트 로그인: " + data.verificationUri + " 에서 아래 코드를 입력해주세요.\n\n" + data.userCode
+              : "Microsoft sign-in: enter this code at " + data.verificationUri + "\n\n" + data.userCode)
+          );
+        });
+        const result = await McNative.login();
+        nativeAccount.loggedIn = true;
+        nativeAccount.name = result.name;
+        return true;
+      } catch (e) {
+        alert(t("alertLoginFirst"));
+        return false;
+      } finally {
+        if (removeListener && removeListener.remove) removeListener.remove();
+      }
+    }
+
+    if (isNativeApp()) {
+      McNative.restoreSession().then((r) => {
+        if (r.restored) {
+          nativeAccount.loggedIn = true;
+          nativeAccount.name = r.name;
+        }
+      });
+    }
   </script>
 </body>
 </html>
