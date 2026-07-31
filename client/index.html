@@ -146,25 +146,29 @@
   .hero p { color: #b9b9c4; font-size: 1.02rem; margin: 0 auto 1.8rem; max-width: 34rem; }
   .hero-buttons { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
   .hero-feature-tabs {
+    position: relative;
     display: flex; gap: 0.4rem; justify-content: center; flex-wrap: wrap;
     margin-top: 2.5rem; padding-top: 1.1rem; border-top: 1px solid rgba(255,255,255,0.08);
   }
   .hero-feature-tabs button {
-    position: relative; overflow: hidden;
+    position: relative;
     background: none; border: none; color: #888; font-size: 0.85rem;
     padding: 0.55rem 1rem; border-radius: 8px; cursor: pointer; transition: background 0.15s, color 0.15s;
   }
   .hero-feature-tabs button:hover { color: #ddd; }
   .hero-feature-tabs button.active { color: #fff; background: rgba(255,255,255,0.08); font-weight: 600; }
   .hero-feature-tabs .tab-label { position: relative; z-index: 1; }
-  .hero-feature-tabs .tab-fill {
-    position: absolute; left: 0; bottom: 0; height: 2px; width: 0%;
-    background: rgba(255,255,255,0.85);
+  /* 탭마다 따로 그리지 않고, 컨테이너 하나에 걸친 바 하나가 현재 탭 밑으로
+     이동하면서 그 폭만큼 차오른다 — 그래서 끊긴 조각들이 아니라 한 줄로 이어진
+     띠처럼 보인다. */
+  .tab-progress-bar {
+    position: absolute; bottom: 0; left: 0; width: 0; height: 2px;
+    background: rgba(255,255,255,0.85); border-radius: 1px;
   }
-  .hero-feature-tabs .tab-fill.filling { animation: tab-fill-sweep var(--tab-duration, 4500ms) linear forwards; }
+  .tab-progress-bar.filling { animation: tab-fill-sweep var(--tab-duration, 4500ms) linear forwards; }
   @keyframes tab-fill-sweep {
-    from { width: 0%; }
-    to { width: 100%; }
+    from { width: 0; }
+    to { width: var(--tab-w, 0px); }
   }
   .hero-buttons a, .hero-buttons button { padding: 0.85rem 1.6rem; font-size: 0.95rem; border-radius: 10px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; transition: transform 0.15s, filter 0.15s; }
   .hero-buttons a:hover, .hero-buttons button:hover { transform: translateY(-1px); filter: brightness(1.08); }
@@ -620,11 +624,12 @@
       <div class="hero-note" id="desktopStatusNote" data-i18n="desktopNoteDefault">데스크톱 프로그램은 내 PC에서 직접 접속해 IP 제한이 있는 서버에서도 안정적으로 동작해요.</div>
 
       <div class="hero-feature-tabs" id="heroFeatureTabs">
-        <button type="button" class="active" data-scene="multi"><span class="tab-label" data-i18n="featureTab1">멀티 서버 동시 접속</span><span class="tab-fill"></span></button>
-        <button type="button" data-scene="chat"><span class="tab-label" data-i18n="featureTab2">실시간 채팅 확인</span><span class="tab-fill"></span></button>
-        <button type="button" data-scene="sign"><span class="tab-label" data-i18n="featureTab3">명령어 서명 지원</span><span class="tab-fill"></span></button>
-        <button type="button" data-scene="trial"><span class="tab-label" data-i18n="featureTab4">브라우저에서 바로 체험</span><span class="tab-fill"></span></button>
-        <button type="button" data-scene="anywhere"><span class="tab-label" data-i18n="featureTab5">어디서든 접속</span><span class="tab-fill"></span></button>
+        <button type="button" class="active" data-scene="multi"><span class="tab-label" data-i18n="featureTab1">멀티 서버 동시 접속</span></button>
+        <button type="button" data-scene="chat"><span class="tab-label" data-i18n="featureTab2">실시간 채팅 확인</span></button>
+        <button type="button" data-scene="sign"><span class="tab-label" data-i18n="featureTab3">명령어 서명 지원</span></button>
+        <button type="button" data-scene="trial"><span class="tab-label" data-i18n="featureTab4">브라우저에서 바로 체험</span></button>
+        <button type="button" data-scene="anywhere"><span class="tab-label" data-i18n="featureTab5">어디서든 접속</span></button>
+        <span class="tab-progress-bar" id="tabProgressBar"></span>
       </div>
     </div>
 
@@ -1561,6 +1566,7 @@
     }
     const heroFeatureTabs = document.getElementById("heroFeatureTabs");
     const featureTabButtons = heroFeatureTabs ? Array.from(heroFeatureTabs.querySelectorAll("button")) : [];
+    const tabProgressBar = document.getElementById("tabProgressBar");
     const FEATURE_TAB_DURATION_MS = 4500;
     let featureTabTimer = null;
     let featureTabIndex = 0;
@@ -1569,20 +1575,23 @@
       const btn = featureTabButtons[index];
       if (!btn) return;
       featureTabIndex = index;
-      featureTabButtons.forEach((b) => {
-        b.classList.remove("active");
-        const fill = b.querySelector(".tab-fill");
-        fill.classList.remove("filling");
-        fill.style.width = "0%";
-      });
+      featureTabButtons.forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
       showHomeDemoScene(btn.dataset.scene);
-      // 리플로우를 강제해서 filling 클래스를 다시 붙였을 때 애니메이션이 처음부터
-      // 다시 재생되게 한다(클래스를 그냥 다시 추가만 하면 브라우저가 "이미 붙어있던
-      // 클래스"로 보고 애니메이션을 재시작하지 않는 경우가 있다).
-      const fill = btn.querySelector(".tab-fill");
-      void fill.offsetWidth;
-      fill.classList.add("filling");
+
+      // 탭마다 따로 바를 그리는 대신, 바 하나를 지금 탭의 x 위치로 옮겨두고 그
+      // 탭의 폭만큼만 차오르게 한다 — 탭 사이 여백에서 끊기지 않고 한 줄로 이어져
+      // 보인다.
+      if (tabProgressBar) {
+        tabProgressBar.classList.remove("filling");
+        tabProgressBar.style.left = btn.offsetLeft + "px";
+        tabProgressBar.style.setProperty("--tab-w", btn.offsetWidth + "px");
+        tabProgressBar.style.width = "0px";
+        // 리플로우를 강제해서, 애니메이션을 다시 붙였을 때(같은 클래스를 또
+        // 추가하는 것처럼 보여도) 처음부터 다시 재생되게 한다.
+        void tabProgressBar.offsetWidth;
+        tabProgressBar.classList.add("filling");
+      }
 
       if (restartAutoplay !== false) {
         if (featureTabTimer) clearTimeout(featureTabTimer);
