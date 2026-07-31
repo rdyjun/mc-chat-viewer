@@ -1,0 +1,36 @@
+name: Deploy App in Toss
+
+# 스토어 배포와 마찬가지로 되돌리기 어려운 작업이라 수동 실행으로만 트리거한다.
+# Actions 탭 -> Deploy App in Toss -> Run workflow 로 실행.
+on:
+  workflow_dispatch:
+    inputs:
+      memo:
+        description: "출시 메모 (선택, 최대 1000자)"
+        required: false
+        default: ""
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: toss-client
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build .ait artifact
+        run: npx ait build
+
+      - name: Deploy to App in Toss
+        run: |
+          npx ait deploy \
+            --api-key "${{ secrets.APPS_IN_TOSS_API_KEY }}" \
+            ${{ inputs.memo != '' && format('-m "{0}"', inputs.memo) || '' }}
