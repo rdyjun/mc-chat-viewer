@@ -1987,6 +1987,18 @@
       });
     }
 
+    function howTypeInto(el, text, myGen, onDone) {
+      el.textContent = "";
+      let i = 0;
+      function tick() {
+        if (!howGenValid(myGen)) return;
+        i++;
+        el.textContent = text.slice(0, i);
+        if (i < text.length) { setTimeout(tick, 55); } else { setTimeout(onDone, 350); }
+      }
+      tick();
+    }
+
     function playChatScene(myGen, onDone) {
       howPreviewStage.innerHTML =
         '<div class="chat-slot how-mock-chat">' +
@@ -1995,32 +2007,43 @@
         '<div class="line"><span class="time">14:22</span><b>Notch</b>: 안녕하세요~</div>' +
         '</div>' +
         '<div class="how-mock-chat-input-row">' +
-        '<div class="how-mock-chat-input" id="howChatInput">안녕하세요! 반가워요</div>' +
+        '<div class="how-mock-chat-input" id="howChatInput"></div>' +
         '<div class="how-mock-send-btn">전송</div>' +
         '</div></div>';
       const sendBtn = howPreviewStage.querySelector(".how-mock-send-btn");
       const log = howPreviewStage.querySelector("#howChatLog");
       const inputEl = howPreviewStage.querySelector("#howChatInput");
-      moveHowCursorTo(sendBtn, myGen, () => {
+
+      // 첫 메시지: 한 글자씩 타이핑 -> 전송 버튼 클릭 -> 로그에 추가.
+      howTypeInto(inputEl, "안녕하세요! 반가워요", myGen, () => {
         if (!howGenValid(myGen)) return;
-        const chatLine = document.createElement("div");
-        chatLine.className = "line";
-        chatLine.innerHTML = '<span class="time">14:23</span><b>나</b>: 안녕하세요! 반가워요';
-        log.appendChild(chatLine);
-        log.scrollTop = log.scrollHeight;
-        inputEl.textContent = "/잠수";
-        setTimeout(() => {
+        moveHowCursorTo(sendBtn, myGen, () => {
           if (!howGenValid(myGen)) return;
-          moveHowCursorTo(sendBtn, myGen, () => {
+          const chatLine = document.createElement("div");
+          chatLine.className = "line";
+          chatLine.innerHTML = '<span class="time">14:23</span><b>나</b>: 안녕하세요! 반가워요';
+          log.appendChild(chatLine);
+          log.scrollTop = log.scrollHeight;
+          inputEl.textContent = "";
+          setTimeout(() => {
             if (!howGenValid(myGen)) return;
-            const sysLine = document.createElement("div");
-            sysLine.className = "line line-system";
-            sysLine.innerHTML = '<b class="sys-tag">시스템</b> 잠수터로 이동되었습니다.';
-            log.appendChild(sysLine);
-            log.scrollTop = log.scrollHeight;
-            setTimeout(() => { if (howGenValid(myGen)) onDone(); }, 900);
-          });
-        }, 900);
+            // 두 번째 메시지: /잠수를 타이핑해서 실제로 전송 버튼을 다시 눌러
+            // 보내고, 그 결과로 시스템 메시지가 뜬다.
+            howTypeInto(inputEl, "/잠수", myGen, () => {
+              if (!howGenValid(myGen)) return;
+              moveHowCursorTo(sendBtn, myGen, () => {
+                if (!howGenValid(myGen)) return;
+                const sysLine = document.createElement("div");
+                sysLine.className = "line line-system";
+                sysLine.innerHTML = '<b class="sys-tag">시스템</b> 잠수터로 이동되었습니다.';
+                log.appendChild(sysLine);
+                log.scrollTop = log.scrollHeight;
+                inputEl.textContent = "";
+                setTimeout(() => { if (howGenValid(myGen)) onDone(); }, 900);
+              });
+            });
+          }, 500);
+        });
       });
     }
 
