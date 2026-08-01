@@ -605,6 +605,7 @@
   }
   .how-mock-added { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: #9ad; }
   .how-mock-added .dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: #4caf50; }
+  .how-mock-added .dot.connecting { background: #e0a83a; animation: slot-status-pulse 1.2s ease-in-out infinite; }
   .how-mock-chat { width: 100%; height: 100%; display: flex; flex-direction: column; gap: 0.6rem; }
   .how-mock-chat .slot-log { flex: 1; }
 
@@ -1893,36 +1894,9 @@
     }
 
     // "어떻게 동작하나요" 섹션: 왼쪽 단계가 하나씩 활성화되고(흰색), 나머지는
-    // 흐려진다(opacity). 고정된 타이머가 아니라, 가짜 마우스 포인터가 그
-    // 단계의 클릭 대상(data-cursor-target)으로 실제로 움직여서 "클릭"하면
-    // 그 액션에 맞춰 다음 단계로 넘어간다.
-    const howScenes = {
-      login:
-        '<div class="how-mock-login">' +
-        '<div class="how-mock-login-icon">🎮</div>' +
-        '<div class="how-mock-login-title">마인크래프트 계정으로 로그인</div>' +
-        '<div class="how-mock-login-btn" data-cursor-target>Microsoft로 로그인</div>' +
-        '</div>',
-      addserver:
-        '<div class="how-mock-addserver">' +
-        '<div class="how-mock-label">서버 주소</div>' +
-        '<div class="how-mock-input-row">' +
-        '<div class="how-mock-input">play.hypixel.net</div>' +
-        '<div class="how-mock-add-btn" data-cursor-target>추가</div>' +
-        '</div>' +
-        '<div class="how-mock-added"><span class="dot"></span>play.hypixel.net 추가됨</div>' +
-        '</div>',
-      chat:
-        '<div class="chat-slot how-mock-chat">' +
-        '<div class="slot-header"><span class="slot-status-dot connected"></span><b>play.hypixel.net</b></div>' +
-        '<div class="slot-log">' +
-        '<div class="line"><span class="time">14:22</span><b>Notch</b>: 안녕하세요~</div>' +
-        '</div>' +
-        '<div class="how-mock-chat-input-row">' +
-        '<div class="how-mock-chat-input">/say 사냥하러 갑니다</div>' +
-        '<div class="how-mock-send-btn" data-cursor-target>전송</div>' +
-        '</div></div>',
-    };
+    // 흐려진다(opacity). 고정된 타이머가 아니라, 가짜 마우스 포인터가 각
+    // 단계의 클릭 대상으로 실제로 움직여서 "클릭"하고, 그 결과(로그인 완료,
+    // 서버 연결, 채팅 전송 등)가 화면에 반영된 뒤에야 다음 단계로 넘어간다.
     const howSteps = document.getElementById("howSteps") ? Array.from(document.getElementById("howSteps").querySelectorAll(".how-step")) : [];
     const howPreview = document.getElementById("howPreview");
     const howPreviewStage = document.getElementById("howPreviewStage");
@@ -1930,7 +1904,9 @@
     let howGen = 0;
     let howCursorPlaced = false;
 
-    function moveHowCursorTo(targetEl, onDone, myGen) {
+    function howGenValid(myGen) { return myGen === howGen; }
+
+    function moveHowCursorTo(targetEl, myGen, onDone) {
       if (!howCursor || !howPreview || !targetEl) { onDone(); return; }
       const stageRect = howPreview.getBoundingClientRect();
       const targetRect = targetEl.getBoundingClientRect();
@@ -1948,11 +1924,11 @@
       howCursor.style.left = x + "px";
       howCursor.style.top = y + "px";
       setTimeout(() => {
-        if (myGen !== howGen) return;
+        if (!howGenValid(myGen)) return;
         howCursor.classList.add("clicking");
         targetEl.classList.add("how-mock-flash");
         setTimeout(() => {
-          if (myGen !== howGen) return;
+          if (!howGenValid(myGen)) return;
           howCursor.classList.remove("clicking");
           targetEl.classList.remove("how-mock-flash");
           onDone();
@@ -1960,21 +1936,111 @@
       }, 750);
     }
 
+    function playLoginScene(myGen, onDone) {
+      howPreviewStage.innerHTML =
+        '<div class="how-mock-login">' +
+        '<div class="how-mock-login-icon">🎮</div>' +
+        '<div class="how-mock-login-title">마인크래프트 계정으로 로그인</div>' +
+        '<div class="how-mock-login-btn">Microsoft로 로그인</div>' +
+        '</div>';
+      const btn = howPreviewStage.querySelector(".how-mock-login-btn");
+      moveHowCursorTo(btn, myGen, () => {
+        if (!howGenValid(myGen)) return;
+        howPreviewStage.innerHTML =
+          '<div class="how-mock-login">' +
+          '<div class="how-mock-login-icon">🪟</div>' +
+          '<div class="how-mock-login-title">Microsoft 계정으로 로그인 중...</div>' +
+          '</div>';
+        setTimeout(() => {
+          if (!howGenValid(myGen)) return;
+          howPreviewStage.innerHTML =
+            '<div class="how-mock-login">' +
+            '<div class="how-mock-login-icon">✅</div>' +
+            '<div class="how-mock-login-title">로그인 완료</div>' +
+            '</div>';
+          setTimeout(() => { if (howGenValid(myGen)) onDone(); }, 700);
+        }, 900);
+      });
+    }
+
+    function playAddServerScene(myGen, onDone) {
+      howPreviewStage.innerHTML =
+        '<div class="how-mock-addserver">' +
+        '<div class="how-mock-label">서버 주소</div>' +
+        '<div class="how-mock-input-row">' +
+        '<div class="how-mock-input">play.hypixel.net</div>' +
+        '<div class="how-mock-add-btn">추가</div>' +
+        '</div>' +
+        '<div class="how-mock-added" style="visibility:hidden"><span class="dot"></span>-</div>' +
+        '</div>';
+      const btn = howPreviewStage.querySelector(".how-mock-add-btn");
+      const added = howPreviewStage.querySelector(".how-mock-added");
+      moveHowCursorTo(btn, myGen, () => {
+        if (!howGenValid(myGen)) return;
+        added.style.visibility = "visible";
+        added.innerHTML = '<span class="dot connecting"></span>play.hypixel.net 연결 중...';
+        setTimeout(() => {
+          if (!howGenValid(myGen)) return;
+          added.innerHTML = '<span class="dot"></span>play.hypixel.net 연결됨';
+          setTimeout(() => { if (howGenValid(myGen)) onDone(); }, 700);
+        }, 900);
+      });
+    }
+
+    function playChatScene(myGen, onDone) {
+      howPreviewStage.innerHTML =
+        '<div class="chat-slot how-mock-chat">' +
+        '<div class="slot-header"><span class="slot-status-dot connected"></span><b>play.hypixel.net</b></div>' +
+        '<div class="slot-log" id="howChatLog">' +
+        '<div class="line"><span class="time">14:22</span><b>Notch</b>: 안녕하세요~</div>' +
+        '</div>' +
+        '<div class="how-mock-chat-input-row">' +
+        '<div class="how-mock-chat-input" id="howChatInput">안녕하세요! 반가워요</div>' +
+        '<div class="how-mock-send-btn">전송</div>' +
+        '</div></div>';
+      const sendBtn = howPreviewStage.querySelector(".how-mock-send-btn");
+      const log = howPreviewStage.querySelector("#howChatLog");
+      const inputEl = howPreviewStage.querySelector("#howChatInput");
+      moveHowCursorTo(sendBtn, myGen, () => {
+        if (!howGenValid(myGen)) return;
+        const chatLine = document.createElement("div");
+        chatLine.className = "line";
+        chatLine.innerHTML = '<span class="time">14:23</span><b>나</b>: 안녕하세요! 반가워요';
+        log.appendChild(chatLine);
+        log.scrollTop = log.scrollHeight;
+        inputEl.textContent = "/잠수";
+        setTimeout(() => {
+          if (!howGenValid(myGen)) return;
+          moveHowCursorTo(sendBtn, myGen, () => {
+            if (!howGenValid(myGen)) return;
+            const sysLine = document.createElement("div");
+            sysLine.className = "line line-system";
+            sysLine.innerHTML = '<b class="sys-tag">시스템</b> 잠수터로 이동되었습니다.';
+            log.appendChild(sysLine);
+            log.scrollTop = log.scrollHeight;
+            setTimeout(() => { if (howGenValid(myGen)) onDone(); }, 900);
+          });
+        }, 900);
+      });
+    }
+
+    const howScenePlayers = { login: playLoginScene, addserver: playAddServerScene, chat: playChatScene };
+
     function activateHowStep(index) {
       howGen++;
       const myGen = howGen;
       const step = howSteps[index];
-      if (!step) return;
+      if (!step || !howPreviewStage) return;
       howSteps.forEach((s) => s.classList.remove("active"));
       step.classList.add("active");
-      if (howPreviewStage) howPreviewStage.innerHTML = howScenes[step.dataset.scene] || "";
-      const target = howPreviewStage ? howPreviewStage.querySelector("[data-cursor-target]") : null;
+      const playScene = howScenePlayers[step.dataset.scene];
+      if (!playScene) return;
       setTimeout(() => {
-        if (myGen !== howGen || !target) return;
-        moveHowCursorTo(target, () => {
-          if (myGen !== howGen) return;
+        if (!howGenValid(myGen)) return;
+        playScene(myGen, () => {
+          if (!howGenValid(myGen)) return;
           activateHowStep((index + 1) % howSteps.length);
-        }, myGen);
+        });
       }, 900);
     }
 
