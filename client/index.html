@@ -1913,13 +1913,17 @@
       const x = targetRect.left + targetRect.width / 2 - stageRect.left;
       const y = targetRect.top + targetRect.height / 2 - stageRect.top;
       if (!howCursorPlaced) {
-        // 첫 실행에서는 이동 애니메이션 없이 바로 그 자리에 놓고 서서히 나타난다.
-        howCursor.style.transition = "opacity 0.3s";
-        howCursor.style.left = x + "px";
-        howCursor.style.top = y + "px";
+        // 첫 실행에서는 목표 지점 근처 대각선 방향에서 시작해, 움직이면서
+        // 나타나는 첫 모습도 자연스럽게 보이게 한다.
+        howCursor.style.transition = "none";
+        howCursor.style.left = (x - 36) + "px";
+        howCursor.style.top = (y + 36) + "px";
+        void howCursor.offsetWidth;
         howCursorPlaced = true;
       }
-      howCursor.style.transition = "left 0.7s cubic-bezier(0.4,0,0.2,1), top 0.7s cubic-bezier(0.4,0,0.2,1), opacity 0.3s";
+      // 가만히 멈춰있지 않도록: 움직이기 시작할 때 나타나고(opacity), 도착해서
+      // 클릭한 뒤에는 다시 사라진다 — 다음 번 이동 때만 다시 나타난다.
+      howCursor.style.transition = "left 0.7s cubic-bezier(0.4,0,0.2,1), top 0.7s cubic-bezier(0.4,0,0.2,1), opacity 0.25s";
       howCursor.style.opacity = "1";
       howCursor.style.left = x + "px";
       howCursor.style.top = y + "px";
@@ -1931,7 +1935,8 @@
           if (!howGenValid(myGen)) return;
           howCursor.classList.remove("clicking");
           targetEl.classList.remove("how-mock-flash");
-          onDone();
+          howCursor.style.opacity = "0";
+          setTimeout(() => { if (howGenValid(myGen)) onDone(); }, 200);
         }, 350);
       }, 750);
     }
