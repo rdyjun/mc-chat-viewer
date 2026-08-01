@@ -151,10 +151,12 @@
     padding: 0.55rem 1rem; cursor: pointer; transition: background 0.15s, color 0.15s;
   }
   .hero-feature-tabs button:hover { color: #ddd; }
-  .hero-feature-tabs button.active {
-    color: #111; font-weight: 600;
-    background: rgba(255,255,255,0.85);
-    box-shadow: 0 0 20px 4px rgba(255,255,255,0.5);
+  .hero-feature-tabs button.active { color: #fff; font-weight: 600; }
+  .hero-feature-tabs button.active::before {
+    content: ""; position: absolute; z-index: 0; pointer-events: none;
+    left: -0.3rem; right: -0.3rem; bottom: -0.4rem; height: 160%;
+    background: linear-gradient(to top, rgba(255,255,255,0.55), rgba(255,255,255,0) 70%);
+    filter: blur(6px);
   }
   .hero-feature-tabs .tab-label { position: relative; z-index: 1; }
   /* 버튼 전체를 하나의 레이아웃(컨테이너)으로 보고, 그 바닥에 바 하나를
