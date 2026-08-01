@@ -48,7 +48,7 @@
   h2 { font-size: 0.95rem; color: #d8d8e0; margin: 0 0 0.5rem; }
   header.appHeader {
     display: flex; align-items: center; gap: 1.5rem; margin-bottom: 1.5rem; flex-shrink: 0;
-    padding: 0.9rem 2rem 1.4rem; border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding: 0.9rem 2rem 1.4rem;
     position: sticky; top: 0; z-index: 30;
     background: rgba(15,15,19,0.6);
     backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
@@ -1601,16 +1601,19 @@
       btn.classList.add("active");
       showHomeDemoScene(btn.dataset.scene);
 
-      // 바는 개별 탭 위치와 무관하게, 전체 탭 레이아웃을 기준으로 0%에서
-      // 100%까지 한 사이클(탭 개수 x 지속시간) 동안 채워진다. 처음 탭으로
-      // 돌아올 때만 순간 리셋 후 다시 채운다.
-      if (tabProgressBar && index === 0) {
-        const cycleDuration = featureTabButtons.length * FEATURE_TAB_DURATION_MS;
+      // 바는 매번 "지금 탭까지 이미 지나간 비율"에서 시작해 "다음 탭까지의
+      // 비율"로 채워진다 — 자동 재생이든 클릭이든 항상 현재 탭 위치와 정확히
+      // 맞아떨어진다 (이전 트랜지션이 끝까지 갔든 안 갔든 상관없이 매번
+      // 새로 계산해서 순간 이동 후 다시 채우기 때문).
+      if (tabProgressBar) {
+        const n = featureTabButtons.length;
+        const fromPct = (index / n) * 100;
+        const toPct = ((index + 1) / n) * 100;
         tabProgressBar.style.transition = "none";
-        tabProgressBar.style.width = "0%";
+        tabProgressBar.style.width = fromPct + "%";
         void tabProgressBar.offsetWidth;
-        tabProgressBar.style.transition = "width " + cycleDuration + "ms linear";
-        tabProgressBar.style.width = "100%";
+        tabProgressBar.style.transition = "width " + FEATURE_TAB_DURATION_MS + "ms linear";
+        tabProgressBar.style.width = toPct + "%";
       }
 
       if (restartAutoplay !== false) {
