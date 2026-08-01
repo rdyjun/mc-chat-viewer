@@ -151,7 +151,10 @@
     padding: 0.55rem 1rem; cursor: pointer; transition: background 0.15s, color 0.15s;
   }
   .hero-feature-tabs button:hover { color: #ddd; }
-  .hero-feature-tabs button.active { color: #fff; background: rgba(255,255,255,0.08); font-weight: 600; }
+  .hero-feature-tabs button.active {
+    color: #fff; background: rgba(255,255,255,0.08); font-weight: 600;
+    box-shadow: 0 4px 14px rgba(255,255,255,0.18);
+  }
   .hero-feature-tabs .tab-label { position: relative; z-index: 1; }
   /* 버튼 전체를 하나의 레이아웃(컨테이너)으로 보고, 그 바닥에 바 하나를
      0%에서 100%(레이아웃 끝)까지 한 사이클 동안 쭉 채운다. 개별 버튼의
