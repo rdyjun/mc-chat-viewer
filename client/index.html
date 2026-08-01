@@ -784,11 +784,11 @@
       <div class="hero-note" id="desktopStatusNote" data-i18n="desktopNoteDefault">데스크톱 프로그램은 내 PC에서 직접 접속해 IP 제한이 있는 서버에서도 안정적으로 동작해요.</div>
 
       <div class="hero-feature-tabs" id="heroFeatureTabs">
-        <button type="button" class="active" data-scene="chat"><span class="tab-label" data-i18n="featureTab2">실시간 채팅 확인</span></button>
-        <button type="button" data-scene="multi"><span class="tab-label" data-i18n="featureTab1">멀티 서버 동시 접속</span></button>
-        <button type="button" data-scene="sign"><span class="tab-label" data-i18n="featureTab3">명령어 서명 지원</span></button>
-        <button type="button" data-scene="trial"><span class="tab-label" data-i18n="featureTab4">브라우저에서 바로 체험</span></button>
-        <button type="button" data-scene="anywhere"><span class="tab-label" data-i18n="featureTab5">어디서든 접속</span></button>
+        <button type="button" class="active" data-scene="chat" data-duration="6000"><span class="tab-label" data-i18n="featureTab2">실시간 채팅 확인</span></button>
+        <button type="button" data-scene="multi" data-duration="6000"><span class="tab-label" data-i18n="featureTab1">멀티 서버 동시 접속</span></button>
+        <button type="button" data-scene="sign" data-duration="7000"><span class="tab-label" data-i18n="featureTab3">명령어 서명 지원</span></button>
+        <button type="button" data-scene="trial" data-duration="4000"><span class="tab-label" data-i18n="featureTab4">브라우저에서 바로 체험</span></button>
+        <button type="button" data-scene="anywhere" data-duration="6500"><span class="tab-label" data-i18n="featureTab5">어디서든 접속</span></button>
         <span class="tab-progress-bar" id="tabProgressBar"></span>
       </div>
     </div>
@@ -1835,7 +1835,9 @@
       const logEl = document.getElementById("homeDemoLog");
       const typedEl = document.getElementById("homeDemoTyped");
       if (!logEl || !typedEl) return;
-      const messages = ["안녕하세요~ 반갑습니다", "같이 사냥하러 갈 사람?", "여기 서버 좋네요 ㅎㅎ"];
+      // 평범한 채팅과 명령어(메시지 인자를 가진 커맨드) 둘 다 서명된다는 걸
+      // 보여주기 위해 두 종류를 번갈아 보여준다.
+      const messages = ["안녕하세요~ 반갑습니다", "/tell Steve 같이 사냥 가자", "여기 서버 좋네요 ㅎㅎ", "/msg Alex 스폰에서 봐요"];
 
       function appendSignedLine(text) {
         const div = document.createElement("div");
@@ -1992,6 +1994,11 @@
     let featureTabTimer = null;
     let featureTabIndex = 0;
 
+    function featureTabDuration(btn) {
+      const d = parseInt(btn.dataset.duration, 10);
+      return d > 0 ? d : FEATURE_TAB_DURATION_MS;
+    }
+
     function activateFeatureTab(index, restartAutoplay) {
       const btn = featureTabButtons[index];
       if (!btn) return;
@@ -2000,10 +2007,13 @@
       btn.classList.add("active");
       showHomeDemoScene(btn.dataset.scene);
 
-      // 바는 매번 "지금 탭까지 이미 지나간 비율"에서 시작해 "다음 탭까지의
-      // 비율"로 채워진다 — 자동 재생이든 클릭이든 항상 현재 탭 위치와 정확히
+      // 탭마다 데모에 필요한 시간이 달라서(data-duration), 바가 그 탭 구간을
+      // 채우는 속도도 그 탭 고유의 지속시간에 맞춰 느려지거나 빨라진다. 바는
+      // 매번 "지금 탭까지 이미 지나간 비율"에서 시작해 "다음 탭까지의 비율"로
+      // 채워진다 — 자동 재생이든 클릭이든 항상 현재 탭 위치와 정확히
       // 맞아떨어진다 (이전 트랜지션이 끝까지 갔든 안 갔든 상관없이 매번
       // 새로 계산해서 순간 이동 후 다시 채우기 때문).
+      const duration = featureTabDuration(btn);
       if (tabProgressBar) {
         const n = featureTabButtons.length;
         const fromPct = (index / n) * 100;
@@ -2011,7 +2021,7 @@
         tabProgressBar.style.transition = "none";
         tabProgressBar.style.width = fromPct + "%";
         void tabProgressBar.offsetWidth;
-        tabProgressBar.style.transition = "width " + FEATURE_TAB_DURATION_MS + "ms linear";
+        tabProgressBar.style.transition = "width " + duration + "ms linear";
         tabProgressBar.style.width = toPct + "%";
       }
 
@@ -2019,7 +2029,7 @@
         if (featureTabTimer) clearTimeout(featureTabTimer);
         featureTabTimer = setTimeout(() => {
           activateFeatureTab((featureTabIndex + 1) % featureTabButtons.length);
-        }, FEATURE_TAB_DURATION_MS);
+        }, duration);
       }
     }
 
