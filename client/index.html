@@ -36,7 +36,7 @@
   html { height: 100%; }
   body {
     font-family: system-ui, sans-serif; color: #f0f0f3; margin: 0; padding: 0.75rem 2rem 2rem;
-    background: #16161c;
+    background: #0a0a0d;
     background-attachment: fixed;
     display: flex; flex-direction: column; min-height: 100%;
   }
@@ -1562,6 +1562,11 @@
     let featureTabTimer = null;
     let featureTabIndex = 0;
     let featureTabBarTarget = 0;
+    // 컨테이너는 버튼들을 가운데 정렬하기 때문에 왼쪽 끝(left:0)부터 채우면
+    // 첫 버튼 앞의 빈 여백까지 차오르는 것처럼 보인다. 그래서 바의 시작점을
+    // 첫 버튼의 왼쪽 끝에 맞춘다.
+    const featureTabBarStart = featureTabButtons.length ? featureTabButtons[0].offsetLeft : 0;
+    if (tabProgressBar) tabProgressBar.style.left = featureTabBarStart + "px";
 
     function activateFeatureTab(index, restartAutoplay) {
       const btn = featureTabButtons[index];
@@ -1576,7 +1581,7 @@
       // 보인다. 뒤로 가거나(클릭) 마지막 탭에서 처음으로 돌아갈 때만 순간
       // 리셋 후 다시 채운다.
       if (tabProgressBar) {
-        const targetWidth = btn.offsetLeft + btn.offsetWidth;
+        const targetWidth = btn.offsetLeft + btn.offsetWidth - featureTabBarStart;
         if (targetWidth <= featureTabBarTarget) {
           tabProgressBar.style.transition = "none";
           tabProgressBar.style.width = "0px";
