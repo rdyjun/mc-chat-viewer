@@ -150,14 +150,13 @@
   .hero-feature-tabs button:hover { color: #ddd; }
   .hero-feature-tabs button.active { color: #fff; background: rgba(255,255,255,0.08); font-weight: 600; }
   .hero-feature-tabs .tab-label { position: relative; z-index: 1; }
-  /* 바 하나가 왼쪽부터 계속 차오르며, 그 끝이 지나는 버튼이 활성화된다.
-     탭이 바뀔 때마다 리셋되는 게 아니라 전체 탭 구간을 하나의 흐름으로
-     가로지르는 띠 — 마지막 탭을 지나 처음으로 돌아갈 때만 순간적으로
-     리셋된다. */
+  /* 활성 탭 밑으로만 짧게 깔리는 인디케이터. 탭이 바뀌면 그 탭의 위치/폭으로
+     빠르게 슬라이드된다 (누적 폭 계산 없음 — 줄바꿈되는 좁은 화면에서도
+     항상 현재 탭 자신의 위치만 쓰므로 깨지지 않는다). */
   .tab-progress-bar {
     position: absolute; bottom: 0; left: 0; width: 0; height: 2px;
     background: rgba(255,255,255,0.85); border-radius: 1px;
-    transition: width 4500ms linear;
+    transition: left 350ms cubic-bezier(0.4,0,0.2,1), width 350ms cubic-bezier(0.4,0,0.2,1);
   }
   .hero-buttons a, .hero-buttons button { padding: 0.85rem 1.6rem; font-size: 0.95rem; border-radius: 10px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; transition: transform 0.15s, filter 0.15s; }
   .hero-buttons a:hover, .hero-buttons button:hover { transform: translateY(-1px); filter: brightness(1.08); }
@@ -1561,12 +1560,6 @@
     const FEATURE_TAB_DURATION_MS = 4500;
     let featureTabTimer = null;
     let featureTabIndex = 0;
-    let featureTabBarTarget = 0;
-    // 컨테이너는 버튼들을 가운데 정렬하기 때문에 왼쪽 끝(left:0)부터 채우면
-    // 첫 버튼 앞의 빈 여백까지 차오르는 것처럼 보인다. 그래서 바의 시작점을
-    // 첫 버튼의 왼쪽 끝에 맞춘다.
-    const featureTabBarStart = featureTabButtons.length ? featureTabButtons[0].offsetLeft : 0;
-    if (tabProgressBar) tabProgressBar.style.left = featureTabBarStart + "px";
 
     function activateFeatureTab(index, restartAutoplay) {
       const btn = featureTabButtons[index];
@@ -1576,20 +1569,11 @@
       btn.classList.add("active");
       showHomeDemoScene(btn.dataset.scene);
 
-      // 바 하나가 왼쪽부터 계속 차오르다가, 현재 탭의 오른쪽 끝까지 도달한다.
-      // 다음 탭으로 넘어갈수록 목표 지점만 더 늘어나므로 끊기지 않고 이어져
-      // 보인다. 뒤로 가거나(클릭) 마지막 탭에서 처음으로 돌아갈 때만 순간
-      // 리셋 후 다시 채운다.
+      // 인디케이터는 항상 현재 탭 자신의 위치/폭만 사용해 슬라이드한다 — 줄이
+      // 바뀌어도(좁은 화면에서 탭이 다음 줄로 넘어가도) 절대 깨지지 않는다.
       if (tabProgressBar) {
-        const targetWidth = btn.offsetLeft + btn.offsetWidth - featureTabBarStart;
-        if (targetWidth <= featureTabBarTarget) {
-          tabProgressBar.style.transition = "none";
-          tabProgressBar.style.width = "0px";
-          void tabProgressBar.offsetWidth;
-          tabProgressBar.style.transition = "width " + FEATURE_TAB_DURATION_MS + "ms linear";
-        }
-        tabProgressBar.style.width = targetWidth + "px";
-        featureTabBarTarget = targetWidth;
+        tabProgressBar.style.left = btn.offsetLeft + "px";
+        tabProgressBar.style.width = btn.offsetWidth + "px";
       }
 
       if (restartAutoplay !== false) {
