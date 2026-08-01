@@ -264,12 +264,19 @@
     transition: width 0.2s ease;
   }
   .sidebar-toggle-btn {
-    align-self: flex-end; flex-shrink: 0; width: 1.9rem; height: 1.9rem; padding: 0;
-    display: flex; align-items: center; justify-content: center; font-size: 0.9rem;
+    align-self: flex-start; flex-shrink: 0; width: 1.9rem; height: 1.9rem; padding: 0;
+    display: flex; align-items: center; justify-content: center;
     background: rgba(255,255,255,0.06); border: 1px solid var(--glass-border); color: #ccc;
     box-shadow: none;
   }
   .sidebar-toggle-btn:hover { background: rgba(255,255,255,0.14); }
+  /* 패널을 좌/우 두 칸으로 나눈 사각형 아이콘 — 왼쪽 칸은 좁게, 오른쪽 칸은
+     넓게 그려서 "사이드바(좁은 쪽)를 접는다"는 걸 시각적으로 표현한다. */
+  .sidebar-toggle-icon {
+    display: flex; width: 1.05rem; height: 0.8rem; border: 1.5px solid currentColor; border-radius: 3px; overflow: hidden;
+  }
+  .sidebar-toggle-icon .l { width: 34%; height: 100%; background: currentColor; }
+  .sidebar-toggle-icon .r { width: 66%; height: 100%; border-left: 1.5px solid currentColor; }
   .sidebar-content { display: flex; flex-direction: column; gap: 1.25rem; overflow: hidden; min-width: 0; }
   .sidebar.collapsed { width: 2.75rem; }
   .sidebar.collapsed .sidebar-content { display: none; }
@@ -915,7 +922,7 @@
     <div class="trial-warning" id="trialWarning" data-i18n-html="trialWarningHtml">⚠ 지금은 <b>웹 체험 모드</b>예요. 이 방식은 서버가 대신 접속을 대리해주는 방식이라, 공인/실서버에 접속하면 "동일 IP 다중 접속" 등으로 인식되어 <b>밴(차단)</b>될 수 있어요. 데스크톱 클라이언트를 사용하면 이 문제 없이 <b>정식 모드</b>로 플레이할 수 있어요.</div>
     <div class="layout">
       <div class="sidebar" id="sidebar">
-        <button type="button" class="sidebar-toggle-btn" id="sidebarToggleBtn">‹</button>
+        <button type="button" class="sidebar-toggle-btn" id="sidebarToggleBtn"><span class="sidebar-toggle-icon"><span class="l"></span><span class="r"></span></span></button>
         <div class="sidebar-content" id="sidebarContent">
           <div class="panel">
             <h2 data-i18n="exploreTitle">서버 탐색</h2>
@@ -2400,10 +2407,8 @@
         if (collapsed) {
           savedSidebarInlineWidth = sidebarEl.style.width || null;
           sidebarEl.style.width = "";
-          sidebarToggleBtn.textContent = "›";
         } else {
           sidebarEl.style.width = savedSidebarInlineWidth || "";
-          sidebarToggleBtn.textContent = "‹";
         }
       });
     }
