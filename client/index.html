@@ -259,7 +259,20 @@
   .panel {
     padding: 1.35rem;
   }
-  .sidebar { width: 280px; flex-shrink: 0; display: flex; flex-direction: column; gap: 1.25rem; }
+  .sidebar {
+    width: 280px; flex-shrink: 0; display: flex; flex-direction: column; gap: 0.6rem;
+    transition: width 0.2s ease;
+  }
+  .sidebar-toggle-btn {
+    align-self: flex-end; flex-shrink: 0; width: 1.9rem; height: 1.9rem; padding: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 0.9rem;
+    background: rgba(255,255,255,0.06); border: 1px solid var(--glass-border); color: #ccc;
+    box-shadow: none;
+  }
+  .sidebar-toggle-btn:hover { background: rgba(255,255,255,0.14); }
+  .sidebar-content { display: flex; flex-direction: column; gap: 1.25rem; overflow: hidden; min-width: 0; }
+  .sidebar.collapsed { width: 2.75rem; }
+  .sidebar.collapsed .sidebar-content { display: none; }
   input {
     padding: 0.6rem 0.75rem; border-radius: 10px; border: 1px solid var(--glass-border);
     background: rgba(0,0,0,0.22); color: #eee; width: 100%;
@@ -516,6 +529,7 @@
     .layout { flex-direction: column; }
     .layout-resizer { display: none; }
     .sidebar { width: 100% !important; }
+    .sidebar.collapsed { width: 2.75rem !important; }
   }
 
   .home-section { max-width: 68rem; margin: 5rem auto 0; padding: 0 2rem; }
@@ -538,11 +552,31 @@
   .how-step.active .how-step-body h3 { color: #fff; }
   .how-step-body p { margin: 0; font-size: 0.85rem; color: #8a8a95; line-height: 1.5; }
   .how-preview {
+    position: relative;
     background: #0d0d10; border: 1px solid rgba(255,255,255,0.12); border-radius: 14px;
-    aspect-ratio: 4 / 3; display: flex; align-items: center; justify-content: center; overflow: hidden;
+    aspect-ratio: 4 / 3; overflow: hidden;
     box-shadow: 0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
-    padding: 1.5rem;
   }
+  .how-preview-stage {
+    width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+    padding: 1.5rem; box-sizing: border-box;
+  }
+  /* 실제로 클릭하는 것처럼 보이게 하는 가짜 마우스 포인터. JS가 각 단계의
+     클릭 대상 위치로 옮기고, 도착하면 살짝 눌리는 애니메이션을 재생한다. */
+  .how-cursor {
+    position: absolute; top: 0; left: 0; width: 18px; height: 18px; border-radius: 50%;
+    background: rgba(255,255,255,0.9); box-shadow: 0 0 0 5px rgba(255,255,255,0.14), 0 2px 10px rgba(0,0,0,0.5);
+    pointer-events: none; opacity: 0; z-index: 5;
+    transform: translate(-50%, -50%);
+    transition: left 0.7s cubic-bezier(0.4,0,0.2,1), top 0.7s cubic-bezier(0.4,0,0.2,1), opacity 0.3s;
+  }
+  .how-cursor.clicking { animation: how-cursor-click 0.35s ease; }
+  @keyframes how-cursor-click {
+    0% { transform: translate(-50%, -50%) scale(1); }
+    40% { transform: translate(-50%, -50%) scale(0.6); }
+    100% { transform: translate(-50%, -50%) scale(1); }
+  }
+  .how-mock-flash { filter: brightness(1.5); transition: filter 0.15s; }
   .how-mock-login { display: flex; flex-direction: column; align-items: center; gap: 0.6rem; text-align: center; }
   .how-mock-login-icon { font-size: 2.4rem; }
   .how-mock-login-title { font-weight: 600; color: #eee; }
@@ -552,13 +586,20 @@
   }
   .how-mock-addserver { width: 100%; max-width: 20rem; display: flex; flex-direction: column; gap: 0.6rem; }
   .how-mock-label { font-size: 0.72rem; color: #9a9aa8; text-transform: uppercase; letter-spacing: 0.03em; }
-  .how-mock-input {
-    padding: 0.6rem 0.75rem; border-radius: 8px; border: 1px solid var(--glass-border);
+  .how-mock-input-row, .how-mock-chat-input-row { display: flex; gap: 0.5rem; }
+  .how-mock-input, .how-mock-chat-input {
+    flex: 1; min-width: 0; padding: 0.6rem 0.75rem; border-radius: 8px; border: 1px solid var(--glass-border);
     background: rgba(0,0,0,0.25); color: #eee; font-size: 0.85rem;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .how-mock-add-btn, .how-mock-send-btn {
+    flex-shrink: 0; padding: 0.6rem 1rem; border-radius: 8px;
+    background: #fff; color: #111; font-weight: 700; font-size: 0.8rem;
   }
   .how-mock-added { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: #9ad; }
   .how-mock-added .dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: #4caf50; }
-  .how-mock-chat { width: 100%; height: 100%; }
+  .how-mock-chat { width: 100%; height: 100%; display: flex; flex-direction: column; gap: 0.6rem; }
+  .how-mock-chat .slot-log { flex: 1; }
 
   /* 신뢰 포인트 */
   .trust-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1.1rem; }
@@ -802,7 +843,10 @@
             </div>
           </div>
         </div>
-        <div class="how-preview" id="howPreviewStage"></div>
+        <div class="how-preview" id="howPreview">
+          <div class="how-preview-stage" id="howPreviewStage"></div>
+          <div class="how-cursor" id="howCursor"></div>
+        </div>
       </div>
     </div>
 
@@ -870,22 +914,25 @@
     </div>
     <div class="trial-warning" id="trialWarning" data-i18n-html="trialWarningHtml">⚠ 지금은 <b>웹 체험 모드</b>예요. 이 방식은 서버가 대신 접속을 대리해주는 방식이라, 공인/실서버에 접속하면 "동일 IP 다중 접속" 등으로 인식되어 <b>밴(차단)</b>될 수 있어요. 데스크톱 클라이언트를 사용하면 이 문제 없이 <b>정식 모드</b>로 플레이할 수 있어요.</div>
     <div class="layout">
-      <div class="sidebar">
-        <div class="panel">
-          <h2 data-i18n="exploreTitle">서버 탐색</h2>
-          <div class="explore-links">
-            <a class="button-link" href="https://www.minelist.kr" target="_blank" rel="noopener noreferrer">마인리스트 (minelist.kr)</a>
-            <a class="button-link" href="https://minesquare.kr" target="_blank" rel="noopener noreferrer">마인스퀘어 (minesquare.kr)</a>
-            <a class="button-link" href="https://mine.page" target="_blank" rel="noopener noreferrer">마인페이지 (mine.page)</a>
+      <div class="sidebar" id="sidebar">
+        <button type="button" class="sidebar-toggle-btn" id="sidebarToggleBtn">‹</button>
+        <div class="sidebar-content" id="sidebarContent">
+          <div class="panel">
+            <h2 data-i18n="exploreTitle">서버 탐색</h2>
+            <div class="explore-links">
+              <a class="button-link" href="https://www.minelist.kr" target="_blank" rel="noopener noreferrer">마인리스트 (minelist.kr)</a>
+              <a class="button-link" href="https://minesquare.kr" target="_blank" rel="noopener noreferrer">마인스퀘어 (minesquare.kr)</a>
+              <a class="button-link" href="https://mine.page" target="_blank" rel="noopener noreferrer">마인페이지 (mine.page)</a>
+            </div>
           </div>
-        </div>
 
-        <div class="panel">
-          <div class="panel-header">
-            <h2 data-i18n="serverListTitle">서버 목록</h2>
-            <button type="button" class="add-server-btn" id="addServerBtn" data-i18n="addServerBtn">+ 서버 추가</button>
+          <div class="panel">
+            <div class="panel-header">
+              <h2 data-i18n="serverListTitle">서버 목록</h2>
+              <button type="button" class="add-server-btn" id="addServerBtn" data-i18n="addServerBtn">+ 서버 추가</button>
+            </div>
+            <ul id="serverList"></ul>
           </div>
-          <ul id="serverList"></ul>
         </div>
       </div>
 
@@ -1177,6 +1224,7 @@
     const chatGrid = document.getElementById("chatGrid");
     const layoutResizer = document.getElementById("layoutResizer");
     const sidebarEl = document.querySelector(".sidebar");
+    const sidebarToggleBtn = document.getElementById("sidebarToggleBtn");
     const logoBtn = document.getElementById("logoBtn");
     const tabHomeBtn = document.getElementById("tabHomeBtn");
     const tabListBtn = document.getElementById("tabListBtn");
@@ -1838,19 +1886,23 @@
     }
 
     // "어떻게 동작하나요" 섹션: 왼쪽 단계가 하나씩 활성화되고(흰색), 나머지는
-    // 흐려진다(opacity). 일정 시간이 지나면 자동으로 다음 단계로 넘어가고,
-    // 오른쪽 미리보기는 그 단계에 맞는 정적 목업으로 바뀐다.
+    // 흐려진다(opacity). 고정된 타이머가 아니라, 가짜 마우스 포인터가 그
+    // 단계의 클릭 대상(data-cursor-target)으로 실제로 움직여서 "클릭"하면
+    // 그 액션에 맞춰 다음 단계로 넘어간다.
     const howScenes = {
       login:
         '<div class="how-mock-login">' +
         '<div class="how-mock-login-icon">🎮</div>' +
         '<div class="how-mock-login-title">마인크래프트 계정으로 로그인</div>' +
-        '<div class="how-mock-login-btn">Microsoft로 로그인</div>' +
+        '<div class="how-mock-login-btn" data-cursor-target>Microsoft로 로그인</div>' +
         '</div>',
       addserver:
         '<div class="how-mock-addserver">' +
         '<div class="how-mock-label">서버 주소</div>' +
+        '<div class="how-mock-input-row">' +
         '<div class="how-mock-input">play.hypixel.net</div>' +
+        '<div class="how-mock-add-btn" data-cursor-target>추가</div>' +
+        '</div>' +
         '<div class="how-mock-added"><span class="dot"></span>play.hypixel.net 추가됨</div>' +
         '</div>',
       chat:
@@ -1858,27 +1910,65 @@
         '<div class="slot-header"><span class="slot-status-dot connected"></span><b>play.hypixel.net</b></div>' +
         '<div class="slot-log">' +
         '<div class="line"><span class="time">14:22</span><b>Notch</b>: 안녕하세요~</div>' +
-        '<div class="line"><span class="time">14:22</span><b>나</b>: /say 사냥하러 갑니다</div>' +
-        '<div class="line line-system"><b class="sys-tag">시스템</b> 명령어가 서명되어 전송되었습니다.</div>' +
+        '</div>' +
+        '<div class="how-mock-chat-input-row">' +
+        '<div class="how-mock-chat-input">/say 사냥하러 갑니다</div>' +
+        '<div class="how-mock-send-btn" data-cursor-target>전송</div>' +
         '</div></div>',
     };
     const howSteps = document.getElementById("howSteps") ? Array.from(document.getElementById("howSteps").querySelectorAll(".how-step")) : [];
+    const howPreview = document.getElementById("howPreview");
     const howPreviewStage = document.getElementById("howPreviewStage");
-    const HOW_STEP_DURATION_MS = 4000;
-    let howStepTimer = null;
+    const howCursor = document.getElementById("howCursor");
+    let howGen = 0;
+    let howCursorPlaced = false;
 
-    function activateHowStep(index, restartAutoplay) {
+    function moveHowCursorTo(targetEl, onDone, myGen) {
+      if (!howCursor || !howPreview || !targetEl) { onDone(); return; }
+      const stageRect = howPreview.getBoundingClientRect();
+      const targetRect = targetEl.getBoundingClientRect();
+      const x = targetRect.left + targetRect.width / 2 - stageRect.left;
+      const y = targetRect.top + targetRect.height / 2 - stageRect.top;
+      if (!howCursorPlaced) {
+        // 첫 실행에서는 이동 애니메이션 없이 바로 그 자리에 놓고 서서히 나타난다.
+        howCursor.style.transition = "opacity 0.3s";
+        howCursor.style.left = x + "px";
+        howCursor.style.top = y + "px";
+        howCursorPlaced = true;
+      }
+      howCursor.style.transition = "left 0.7s cubic-bezier(0.4,0,0.2,1), top 0.7s cubic-bezier(0.4,0,0.2,1), opacity 0.3s";
+      howCursor.style.opacity = "1";
+      howCursor.style.left = x + "px";
+      howCursor.style.top = y + "px";
+      setTimeout(() => {
+        if (myGen !== howGen) return;
+        howCursor.classList.add("clicking");
+        targetEl.classList.add("how-mock-flash");
+        setTimeout(() => {
+          if (myGen !== howGen) return;
+          howCursor.classList.remove("clicking");
+          targetEl.classList.remove("how-mock-flash");
+          onDone();
+        }, 350);
+      }, 750);
+    }
+
+    function activateHowStep(index) {
+      howGen++;
+      const myGen = howGen;
       const step = howSteps[index];
       if (!step) return;
       howSteps.forEach((s) => s.classList.remove("active"));
       step.classList.add("active");
       if (howPreviewStage) howPreviewStage.innerHTML = howScenes[step.dataset.scene] || "";
-      if (restartAutoplay !== false) {
-        if (howStepTimer) clearTimeout(howStepTimer);
-        howStepTimer = setTimeout(() => {
+      const target = howPreviewStage ? howPreviewStage.querySelector("[data-cursor-target]") : null;
+      setTimeout(() => {
+        if (myGen !== howGen || !target) return;
+        moveHowCursorTo(target, () => {
+          if (myGen !== howGen) return;
           activateHowStep((index + 1) % howSteps.length);
-        }, HOW_STEP_DURATION_MS);
-      }
+        }, myGen);
+      }, 900);
     }
 
     if (howSteps.length) {
@@ -2299,6 +2389,24 @@
       document.body.style.userSelect = "";
       localStorage.setItem("sidebarWidth", parseInt(sidebarEl.style.width, 10));
     });
+
+    // 사이드바 접기: 접었을 때는 드래그로 지정된 인라인 width를 잠깐 치워서
+    // (collapsed 클래스의 CSS 폭이 적용되도록) 좁게 만들고, 펼치면 원래 폭으로
+    // 되돌린다.
+    let savedSidebarInlineWidth = null;
+    if (sidebarToggleBtn) {
+      sidebarToggleBtn.addEventListener("click", () => {
+        const collapsed = sidebarEl.classList.toggle("collapsed");
+        if (collapsed) {
+          savedSidebarInlineWidth = sidebarEl.style.width || null;
+          sidebarEl.style.width = "";
+          sidebarToggleBtn.textContent = "›";
+        } else {
+          sidebarEl.style.width = savedSidebarInlineWidth || "";
+          sidebarToggleBtn.textContent = "‹";
+        }
+      });
+    }
 
     async function connectServer(id) {
       if (!(await confirmTrialConnect())) return;
