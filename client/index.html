@@ -457,7 +457,27 @@
     margin-left: 0.75rem; background: #232329; border-radius: 6px; padding: 0.35rem 0.9rem;
     font-size: 0.78rem; color: #999;
   }
-  .home-demo-body { display: flex; gap: 1.25rem; padding: 1.4rem; flex: 1; min-height: 0; }
+  .home-demo-body { position: relative; display: flex; gap: 1.25rem; padding: 1.4rem; flex: 1; min-height: 0; }
+  .sign-badge {
+    float: right; font-size: 0.72rem; color: #9ad; background: rgba(155,93,229,0.15);
+    padding: 0.1rem 0.5rem; border-radius: 6px; margin-left: 0.5rem; white-space: nowrap;
+  }
+  /* "어디서든 접속" 데모: 웹 채팅 카드 위에 휴대폰 모양을 우측 하단에 겹쳐서
+     올리고, 대비를 위해 드롭섀도를 준다. 같은 대화가 웹/폰 양쪽에 동시에
+     올라오는 걸로 "동기화"되어 보인다. */
+  .home-demo-phone {
+    position: absolute; right: 1.4rem; bottom: 1.2rem; z-index: 3;
+    width: 7.2rem; height: 13rem; display: flex; flex-direction: column;
+    background: #111116; border: 2px solid #2c2c34; border-radius: 1.1rem; overflow: hidden;
+    box-shadow: 0 16px 34px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.05);
+  }
+  .home-demo-phone-notch { width: 2.1rem; height: 0.32rem; background: #2c2c34; border-radius: 4px; margin: 0.4rem auto 0.25rem; flex-shrink: 0; }
+  .home-demo-phone-header {
+    font-size: 0.58rem; color: #9a9aa8; text-align: center; padding-bottom: 0.3rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08); flex-shrink: 0;
+  }
+  .home-demo-phone-log { flex: 1; min-height: 0; overflow: hidden; padding: 0.4rem 0.5rem; display: flex; flex-direction: column; gap: 0.3rem; }
+  .home-demo-phone-line { font-size: 0.58rem; color: #ddd; line-height: 1.35; word-break: break-word; }
   .home-demo-sidebar-col { width: 13rem; flex-shrink: 0; display: flex; flex-direction: column; gap: 0.6rem; min-height: 0; }
   .home-demo-sidebar-title { font-size: 0.72rem; color: #9a9aa8; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 0.1rem; }
   .home-demo-sidebar { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; overflow: hidden; }
@@ -472,14 +492,6 @@
   }
   @keyframes home-demo-caret-blink { 50% { opacity: 0; } }
   .home-demo-multi-slots { display: flex; gap: 1rem; flex: 1; min-width: 0; }
-  .home-demo-anywhere { display: flex; flex-direction: column; gap: 0.9rem; justify-content: center; }
-  .home-demo-device {
-    display: flex; align-items: center; gap: 0.75rem; padding: 0.9rem 1.1rem; border-radius: 10px;
-    border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04);
-  }
-  .home-demo-device-icon { font-size: 1.3rem; }
-  .home-demo-device-name { font-weight: 600; }
-  .home-demo-device-status { font-size: 0.8rem; color: #9ad; }
   @media (max-width: 900px) {
     .home-demo-window { aspect-ratio: auto; }
     .home-demo-body { flex-direction: column; overflow-y: auto; }
@@ -1775,6 +1787,133 @@
       step();
     }
 
+    // "멀티 서버 동시 접속": 두 채팅방에 각자 독립된 대화가 동시에(비동기,
+    // 서로 다른 타이밍으로) 실시간처럼 올라온다.
+    function runHomeMultiChat(isActive) {
+      const log1 = document.getElementById("homeDemoMultiLog1");
+      const log2 = document.getElementById("homeDemoMultiLog2");
+      if (!log1 || !log2) return;
+
+      function runLog(logEl, script, delay) {
+        let idx = 0;
+        function appendLine(entry) {
+          const div = document.createElement("div");
+          div.className = entry.system ? "line line-system" : "line";
+          const time = new Date().toLocaleTimeString();
+          div.innerHTML = '<span class="time">' + time + '</span>' +
+            (entry.system ? '<b class="sys-tag">시스템</b> ' : '') + escapeHtml(entry.text);
+          logEl.appendChild(div);
+          while (logEl.children.length > 5) logEl.removeChild(logEl.firstChild);
+          logEl.scrollTop = logEl.scrollHeight;
+        }
+        function step() {
+          if (!isActive()) return;
+          appendLine(script[idx % script.length]);
+          idx++;
+          setTimeout(step, delay + Math.random() * 600);
+        }
+        setTimeout(step, Math.random() * 500);
+      }
+
+      runLog(log1, [
+        { text: "<Steve> 사냥 가자" },
+        { system: true, text: "Alex님이 참가했습니다." },
+        { text: "<Alex> ㄱㄱ" },
+        { text: "<Steve> 좀비 스폰 확인 완료" },
+      ], 1500);
+      runLog(log2, [
+        { text: "<Notch> 스카이워즈 ㄱㄱ" },
+        { text: "<Herobrine> 콜" },
+        { system: true, text: "게임이 곧 시작됩니다." },
+        { text: "<Notch> 다들 준비!" },
+      ], 1500);
+    }
+
+    // "명령어 서명 지원": /say 같은 커맨드 대신, 평범한 채팅을 치면 그 줄
+    // 우측에 "서명됨" 표시가 붙는 걸 보여준다.
+    function runHomeDemoSignChat(isActive) {
+      const logEl = document.getElementById("homeDemoLog");
+      const typedEl = document.getElementById("homeDemoTyped");
+      if (!logEl || !typedEl) return;
+      const messages = ["안녕하세요~ 반갑습니다", "같이 사냥하러 갈 사람?", "여기 서버 좋네요 ㅎㅎ"];
+
+      function appendSignedLine(text) {
+        const div = document.createElement("div");
+        div.className = "line";
+        const time = new Date().toLocaleTimeString();
+        div.innerHTML = '<span class="sign-badge">서명됨 ✓</span>' +
+          '<span class="time">' + time + '</span>&lt;나&gt; ' + escapeHtml(text);
+        logEl.appendChild(div);
+        while (logEl.children.length > 6) logEl.removeChild(logEl.firstChild);
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+      function typeInto(text, done) {
+        let i = 0;
+        (function tick() {
+          if (!isActive()) return;
+          typedEl.textContent = text.slice(0, i);
+          if (i < text.length) {
+            i++;
+            setTimeout(tick, 45 + Math.random() * 40);
+          } else {
+            setTimeout(() => {
+              if (!isActive()) return;
+              typedEl.textContent = "";
+              appendSignedLine(text);
+              done();
+            }, 500);
+          }
+        })();
+      }
+      let idx = 0;
+      function step() {
+        if (!isActive()) return;
+        typeInto(messages[idx % messages.length], () => {
+          idx++;
+          setTimeout(step, 1400);
+        });
+      }
+      step();
+    }
+
+    // "어디서든 접속": 웹 채팅 카드 위에 겹쳐진 휴대폰 목업에 같은 대화가
+    // 동시에(동기화되어) 올라온다.
+    function runHomeDemoAnywhereChat(isActive) {
+      const logEl = document.getElementById("homeDemoLog");
+      const phoneLogEl = document.getElementById("homeDemoPhoneLog");
+      if (!logEl || !phoneLogEl) return;
+      const script = [
+        "<Steve> 안녕하세요~",
+        "<Alex> 반갑습니다!",
+        "<Notch> 오늘 레이드 가실 분?",
+        "<Herobrine> 저요 저요",
+      ];
+      function appendBoth(text) {
+        const time = new Date().toLocaleTimeString();
+        const div1 = document.createElement("div");
+        div1.className = "line";
+        div1.innerHTML = '<span class="time">' + time + '</span>' + escapeHtml(text);
+        logEl.appendChild(div1);
+        while (logEl.children.length > 6) logEl.removeChild(logEl.firstChild);
+        logEl.scrollTop = logEl.scrollHeight;
+
+        const div2 = document.createElement("div");
+        div2.className = "home-demo-phone-line";
+        div2.textContent = text;
+        phoneLogEl.appendChild(div2);
+        while (phoneLogEl.children.length > 5) phoneLogEl.removeChild(phoneLogEl.firstChild);
+        phoneLogEl.scrollTop = phoneLogEl.scrollHeight;
+      }
+      let idx = 0;
+      function step() {
+        if (!isActive()) return;
+        appendBoth(script[idx % script.length]);
+        idx++;
+        setTimeout(step, 1600);
+      }
+      step();
+    }
+
     const homeDemoScenes = {
       chat: {
         html: homeDemoSidebarHtml +
@@ -1791,29 +1930,24 @@
           '<div class="home-demo-multi-slots">' +
           '<div class="chat-slot home-demo-slot">' +
           '<div class="slot-header"><span class="slot-status-dot connected"></span><button type="button" class="slot-server-btn" tabindex="-1">play.hypixel.net</button></div>' +
-          '<div class="slot-log">' +
-          '<div class="line"><span class="time">21:04:12</span>&lt;Steve&gt; 사냥 가자</div>' +
-          '<div class="line line-system"><span class="time">21:04:15</span><b class="sys-tag">시스템</b> Alex님이 참가했습니다.</div>' +
-          '</div></div>' +
+          '<div class="slot-log" id="homeDemoMultiLog1"></div>' +
+          '</div>' +
           '<div class="chat-slot home-demo-slot">' +
           '<div class="slot-header"><span class="slot-status-dot connected"></span><button type="button" class="slot-server-btn" tabindex="-1">mc.hive.com</button></div>' +
-          '<div class="slot-log">' +
-          '<div class="line"><span class="time">21:04:20</span>&lt;Notch&gt; 스카이워즈 ㄱㄱ</div>' +
-          '<div class="line"><span class="time">21:04:24</span>&lt;Herobrine&gt; 콜</div>' +
-          '</div></div>' +
+          '<div class="slot-log" id="homeDemoMultiLog2"></div>' +
+          '</div>' +
           '</div>',
+        animate: runHomeMultiChat,
       },
       sign: {
         html: homeDemoSidebarHtml +
           '<div class="chat-slot home-demo-slot">' +
-          '<div class="slot-header"><span class="slot-status-dot connected"></span><button type="button" class="slot-server-btn" tabindex="-1">play.hypixel.net</button></div>' +
-          '<div class="slot-log">' +
-          '<div class="line">&lt;나&gt; /say 안녕하세요</div>' +
-          '<div class="line line-system"><b class="sys-tag">시스템</b> 서명 완료 ✓ (RSA-SHA256)</div>' +
-          '<div class="line">[공지] 안녕하세요</div>' +
-          '</div>' +
-          '<div class="home-demo-inputbar">/say 안녕하세요</div>' +
+          '<div class="slot-header"><span class="slot-status-dot connected" id="homeDemoDot"></span>' +
+          '<button type="button" class="slot-server-btn" tabindex="-1">play.hypixel.net</button></div>' +
+          '<div class="slot-log" id="homeDemoLog"></div>' +
+          '<div class="home-demo-inputbar"><span id="homeDemoTyped"></span><span class="home-demo-caret"></span></div>' +
           '</div>',
+        animate: runHomeDemoSignChat,
       },
       trial: {
         html: homeDemoSidebarHtml +
@@ -1828,10 +1962,17 @@
       },
       anywhere: {
         html: homeDemoSidebarHtml +
-          '<div class="chat-slot home-demo-slot home-demo-anywhere">' +
-          '<div class="home-demo-device"><span class="home-demo-device-icon">🖥️</span><div><div class="home-demo-device-name">데스크톱 클라이언트</div><div class="home-demo-device-status">play.hypixel.net에 연결됨</div></div></div>' +
-          '<div class="home-demo-device"><span class="home-demo-device-icon">🌐</span><div><div class="home-demo-device-name">브라우저 (mineportal.kr)</div><div class="home-demo-device-status">동일 계정으로 접속 중</div></div></div>' +
+          '<div class="chat-slot home-demo-slot">' +
+          '<div class="slot-header"><span class="slot-status-dot connected" id="homeDemoDot"></span>' +
+          '<button type="button" class="slot-server-btn" tabindex="-1">play.hypixel.net</button></div>' +
+          '<div class="slot-log" id="homeDemoLog"></div>' +
+          '</div>' +
+          '<div class="home-demo-phone" id="homeDemoPhone">' +
+          '<div class="home-demo-phone-notch"></div>' +
+          '<div class="home-demo-phone-header">play.hypixel.net</div>' +
+          '<div class="home-demo-phone-log" id="homeDemoPhoneLog"></div>' +
           '</div>',
+        animate: runHomeDemoAnywhereChat,
       },
     };
 
@@ -2044,7 +2185,23 @@
                 log.appendChild(sysLine);
                 log.scrollTop = log.scrollHeight;
                 inputEl.textContent = "";
-                setTimeout(() => { if (howGenValid(myGen)) onDone(); }, 900);
+                setTimeout(() => {
+                  if (!howGenValid(myGen)) return;
+                  const pointLine1 = document.createElement("div");
+                  pointLine1.className = "line line-system";
+                  pointLine1.innerHTML = '<b class="sys-tag">시스템</b> 잠수 포인트 +5 적립되었습니다.';
+                  log.appendChild(pointLine1);
+                  log.scrollTop = log.scrollHeight;
+                  setTimeout(() => {
+                    if (!howGenValid(myGen)) return;
+                    const pointLine2 = document.createElement("div");
+                    pointLine2.className = "line line-system";
+                    pointLine2.innerHTML = '<b class="sys-tag">시스템</b> 잠수 포인트 +5 적립되었습니다. (누적 10P)';
+                    log.appendChild(pointLine2);
+                    log.scrollTop = log.scrollHeight;
+                    setTimeout(() => { if (howGenValid(myGen)) onDone(); }, 900);
+                  }, 900);
+                }, 700);
               });
             });
           }, 500);
