@@ -150,13 +150,13 @@
   .hero-feature-tabs button:hover { color: #ddd; }
   .hero-feature-tabs button.active { color: #fff; background: rgba(255,255,255,0.08); font-weight: 600; }
   .hero-feature-tabs .tab-label { position: relative; z-index: 1; }
-  /* 활성 탭 밑으로만 짧게 깔리는 인디케이터. 탭이 바뀌면 그 탭의 위치/폭으로
-     빠르게 슬라이드된다 (누적 폭 계산 없음 — 줄바꿈되는 좁은 화면에서도
-     항상 현재 탭 자신의 위치만 쓰므로 깨지지 않는다). */
+  /* 버튼 전체를 하나의 레이아웃(컨테이너)으로 보고, 그 바닥에 바 하나를
+     0%에서 100%(레이아웃 끝)까지 한 사이클 동안 쭉 채운다. 개별 버튼의
+     위치/폭을 전혀 계산하지 않으므로 줄바꿈 등에도 깨지지 않는다. 마지막
+     탭을 지나 처음으로 돌아갈 때만 순간적으로 0%로 리셋 후 다시 채운다. */
   .tab-progress-bar {
     position: absolute; bottom: 0; left: 0; width: 0; height: 2px;
     background: rgba(255,255,255,0.85); border-radius: 1px;
-    transition: left 350ms cubic-bezier(0.4,0,0.2,1), width 350ms cubic-bezier(0.4,0,0.2,1);
   }
   .hero-buttons a, .hero-buttons button { padding: 0.85rem 1.6rem; font-size: 0.95rem; border-radius: 10px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; transition: transform 0.15s, filter 0.15s; }
   .hero-buttons a:hover, .hero-buttons button:hover { transform: translateY(-1px); filter: brightness(1.08); }
@@ -1569,11 +1569,16 @@
       btn.classList.add("active");
       showHomeDemoScene(btn.dataset.scene);
 
-      // 인디케이터는 항상 현재 탭 자신의 위치/폭만 사용해 슬라이드한다 — 줄이
-      // 바뀌어도(좁은 화면에서 탭이 다음 줄로 넘어가도) 절대 깨지지 않는다.
-      if (tabProgressBar) {
-        tabProgressBar.style.left = btn.offsetLeft + "px";
-        tabProgressBar.style.width = btn.offsetWidth + "px";
+      // 바는 개별 탭 위치와 무관하게, 전체 탭 레이아웃을 기준으로 0%에서
+      // 100%까지 한 사이클(탭 개수 x 지속시간) 동안 채워진다. 처음 탭으로
+      // 돌아올 때만 순간 리셋 후 다시 채운다.
+      if (tabProgressBar && index === 0) {
+        const cycleDuration = featureTabButtons.length * FEATURE_TAB_DURATION_MS;
+        tabProgressBar.style.transition = "none";
+        tabProgressBar.style.width = "0%";
+        void tabProgressBar.offsetWidth;
+        tabProgressBar.style.transition = "width " + cycleDuration + "ms linear";
+        tabProgressBar.style.width = "100%";
       }
 
       if (restartAutoplay !== false) {
