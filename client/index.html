@@ -145,14 +145,16 @@
   .hero-buttons { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
   .hero-feature-tabs {
     position: relative;
-    display: flex; gap: 0.4rem; justify-content: center; flex-wrap: wrap;
+    display: flex; gap: 0.4rem; justify-content: flex-start; flex-wrap: nowrap;
     width: fit-content; max-width: 100%; margin: 2.5rem auto 0;
     padding: 1.1rem 0 0.4rem;
+    overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin;
   }
   .hero-feature-tabs button {
     position: relative;
     background: none; border: none; box-shadow: none; color: #888; font-size: 0.85rem;
     padding: 0.8rem 1rem; cursor: pointer; transition: background 0.15s, color 0.15s;
+    white-space: nowrap; flex-shrink: 0;
   }
   .hero-feature-tabs button:hover { color: #ddd; }
   .hero-feature-tabs button.active { color: #fff; background: rgba(255,255,255,0.08); font-weight: 600; }
