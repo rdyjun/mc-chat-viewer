@@ -148,8 +148,10 @@
     display: flex; gap: 0.4rem; justify-content: flex-start; flex-wrap: nowrap;
     width: fit-content; max-width: 100%; margin: 2.5rem auto 0;
     padding: 1.1rem 0 0.4rem;
-    overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; -ms-overflow-style: none;
   }
+  .hero-feature-tabs::-webkit-scrollbar { display: none; }
   .hero-feature-tabs button {
     position: relative;
     background: none; border: none; box-shadow: none; color: #888; font-size: 0.85rem;
