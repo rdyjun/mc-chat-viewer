@@ -2017,7 +2017,14 @@
       btn.classList.add("active");
       showHomeDemoScene(btn.dataset.scene);
       if (heroFeatureTabsScroll) {
-        btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+        const wrapRect = heroFeatureTabsScroll.getBoundingClientRect();
+        const btnRect = btn.getBoundingClientRect();
+        const btnCenter = (btnRect.left + btnRect.width / 2) - wrapRect.left + heroFeatureTabsScroll.scrollLeft;
+        const targetScroll = btnCenter - heroFeatureTabsScroll.clientWidth / 2;
+        heroFeatureTabsScroll.scrollTo({
+          left: Math.max(0, targetScroll),
+          behavior: "smooth",
+        });
       }
 
       // 탭마다 데모에 필요한 시간이 달라서(data-duration), 바가 그 탭 구간을
