@@ -48,7 +48,7 @@ gradlew.bat shadowJar
 
 ## 릴리즈 배포 (수동)
 
-앱은 시작 시 `https://api.github.com/repos/rdyjun/mc-chat-viewer/releases/latest` 를 조회하여
+앱은 시작 시 `https://api.github.com/repos/rdyjun/mineportal/releases/latest` 를 조회하여
 `tag_name` 을 현재 앱 버전과 비교합니다. **태그 이름이 곧 앱이 인식하는 버전**입니다.
 
 배포 절차:

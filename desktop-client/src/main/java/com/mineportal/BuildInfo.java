@@ -11,7 +11,7 @@ public final class BuildInfo {
 
     static {
         String version = "0.0.0";
-        String repo = "rdyjun/mc-chat-viewer";
+        String repo = "rdyjun/mineportal";
         try (InputStream in = BuildInfo.class.getResourceAsStream("/version.properties")) {
             if (in != null) {
                 Properties props = new Properties();
