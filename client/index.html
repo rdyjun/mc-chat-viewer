@@ -232,6 +232,10 @@
   }
   .layout-resizer:hover, .layout-resizer.dragging { background: var(--accent); }
   .layout-resizer:hover::before, .layout-resizer.dragging::before { opacity: 0; }
+  .layout-resizer.disabled { cursor: default; }
+  .layout-resizer.disabled:hover { background: transparent; }
+  .layout-resizer.disabled::before { opacity: 0.4; }
+  .layout-resizer.disabled:hover::before { opacity: 0.4; }
   .mode-toggle { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-shrink: 0; }
   .mode-toggle-btn {
     flex: 1; text-align: center; background: var(--glass-bg-strong); color: #ccc;
@@ -2659,6 +2663,7 @@
 
     let resizingSidebar = false;
     layoutResizer.addEventListener("mousedown", (e) => {
+      if (sidebarEl.classList.contains("collapsed")) return;
       resizingSidebar = true;
       layoutResizer.classList.add("dragging");
       document.body.style.userSelect = "none";
@@ -2685,6 +2690,7 @@
     if (sidebarToggleBtn) {
       sidebarToggleBtn.addEventListener("click", () => {
         const collapsed = sidebarEl.classList.toggle("collapsed");
+        layoutResizer.classList.toggle("disabled", collapsed);
         if (collapsed) {
           savedSidebarInlineWidth = sidebarEl.style.width || null;
           sidebarEl.style.width = "";
