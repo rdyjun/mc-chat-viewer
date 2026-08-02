@@ -12,6 +12,7 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 /**
@@ -36,6 +37,16 @@ public class PingService {
     private static final Pattern IPV4_169_254 = Pattern.compile("^169\\.254\\.");
     private static final Pattern IPV4_172 = Pattern.compile("^172\\.(1[6-9]|2\\d|3[01])\\.");
 
+    // 여러 사용자가 같은 서버를 짧은 시간 안에 반복 조회해도 실제 TCP ping은 한 번만
+    // 나가도록 host:port 단위로 결과를 잠깐 캐싱한다. ConcurrentHashMap#compute는 같은
+    // 키에 대해서는 호출을 직렬화하므로, TTL이 지나기 전 동시에 들어온 요청들도 중복으로
+    // 소켓을 열지 않고 진행 중인 ping의 결과를 함께 기다렸다가 공유해서 받는다.
+    private static final long CACHE_TTL_MS = 15_000;
+    private final ConcurrentHashMap<String, CacheEntry> cache = new ConcurrentHashMap<>();
+
+    private record CacheEntry(PingResult result, long expiresAt) {
+    }
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /** 우리 자신의 사설망 안에서만 의미가 있는 호스트명/IP인 경우 true를 반환한다 — 이를
@@ -58,6 +69,17 @@ public class PingService {
     }
 
     public PingResult ping(String host, int port) {
+        String key = host.toLowerCase() + ":" + port;
+        long now = System.currentTimeMillis();
+        return cache.compute(key, (k, existing) -> {
+            if (existing != null && existing.expiresAt() > now) {
+                return existing;
+            }
+            return new CacheEntry(doPing(host, port), now + CACHE_TTL_MS);
+        }).result();
+    }
+
+    private PingResult doPing(String host, int port) {
         try (Socket socket = new Socket()) {
             socket.connect(new InetSocketAddress(host, port), PING_TIMEOUT_MS);
             socket.setSoTimeout(PING_TIMEOUT_MS);
