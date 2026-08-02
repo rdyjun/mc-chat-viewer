@@ -143,15 +143,18 @@
   }
   .hero p { color: #b9b9c4; font-size: 1.02rem; margin: 0 auto 1.8rem; max-width: 34rem; }
   .hero-buttons { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
-  .hero-feature-tabs {
-    position: relative;
-    display: flex; gap: 0.4rem; justify-content: flex-start; flex-wrap: nowrap;
+  .hero-feature-tabs-scroll {
     width: fit-content; max-width: 100%; margin: 2.5rem auto 0;
-    padding: 1.1rem 0 0.4rem;
     overflow-x: auto; -webkit-overflow-scrolling: touch;
     scrollbar-width: none; -ms-overflow-style: none;
   }
-  .hero-feature-tabs::-webkit-scrollbar { display: none; }
+  .hero-feature-tabs-scroll::-webkit-scrollbar { display: none; }
+  .hero-feature-tabs {
+    position: relative;
+    display: flex; gap: 0.4rem; justify-content: flex-start; flex-wrap: nowrap;
+    width: fit-content;
+    padding: 1.1rem 0 0.4rem;
+  }
   .hero-feature-tabs button {
     position: relative;
     background: none; border: none; box-shadow: none; color: #888; font-size: 0.85rem;
@@ -787,13 +790,15 @@
       </div>
       <div class="hero-note" id="desktopStatusNote" data-i18n="desktopNoteDefault">데스크톱 프로그램은 내 PC에서 직접 접속해 IP 제한이 있는 서버에서도 안정적으로 동작해요.</div>
 
-      <div class="hero-feature-tabs" id="heroFeatureTabs">
-        <button type="button" class="active" data-scene="chat" data-duration="6000"><span class="tab-label" data-i18n="featureTab2">실시간 채팅 확인</span></button>
-        <button type="button" data-scene="multi" data-duration="6000"><span class="tab-label" data-i18n="featureTab1">멀티 서버 동시 접속</span></button>
-        <button type="button" data-scene="sign" data-duration="7000"><span class="tab-label" data-i18n="featureTab3">명령어 서명 지원</span></button>
-        <button type="button" data-scene="trial" data-duration="4000"><span class="tab-label" data-i18n="featureTab4">브라우저에서 바로 체험</span></button>
-        <button type="button" data-scene="anywhere" data-duration="6500"><span class="tab-label" data-i18n="featureTab5">어디서든 접속</span></button>
-        <span class="tab-progress-bar" id="tabProgressBar"></span>
+      <div class="hero-feature-tabs-scroll" id="heroFeatureTabsScroll">
+        <div class="hero-feature-tabs" id="heroFeatureTabs">
+          <button type="button" class="active" data-scene="chat" data-duration="6000"><span class="tab-label" data-i18n="featureTab2">실시간 채팅 확인</span></button>
+          <button type="button" data-scene="multi" data-duration="6000"><span class="tab-label" data-i18n="featureTab1">멀티 서버 동시 접속</span></button>
+          <button type="button" data-scene="sign" data-duration="7000"><span class="tab-label" data-i18n="featureTab3">명령어 서명 지원</span></button>
+          <button type="button" data-scene="trial" data-duration="4000"><span class="tab-label" data-i18n="featureTab4">브라우저에서 바로 체험</span></button>
+          <button type="button" data-scene="anywhere" data-duration="6500"><span class="tab-label" data-i18n="featureTab5">어디서든 접속</span></button>
+          <span class="tab-progress-bar" id="tabProgressBar"></span>
+        </div>
       </div>
     </div>
 
@@ -1992,6 +1997,7 @@
       if (scene.animate) scene.animate(() => myGen === homeDemoGen);
     }
     const heroFeatureTabs = document.getElementById("heroFeatureTabs");
+    const heroFeatureTabsScroll = document.getElementById("heroFeatureTabsScroll");
     const featureTabButtons = heroFeatureTabs ? Array.from(heroFeatureTabs.querySelectorAll("button")) : [];
     const tabProgressBar = document.getElementById("tabProgressBar");
     const FEATURE_TAB_DURATION_MS = 4500;
@@ -2010,6 +2016,9 @@
       featureTabButtons.forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
       showHomeDemoScene(btn.dataset.scene);
+      if (heroFeatureTabsScroll) {
+        btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      }
 
       // 탭마다 데모에 필요한 시간이 달라서(data-duration), 바가 그 탭 구간을
       // 채우는 속도도 그 탭 고유의 지속시간에 맞춰 느려지거나 빨라진다. 바는
