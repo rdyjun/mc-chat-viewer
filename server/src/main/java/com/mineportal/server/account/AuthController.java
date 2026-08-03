@@ -1,6 +1,7 @@
 package com.mineportal.server.account;
 
 import com.mineportal.server.connection.McConnectionManager;
+import com.mineportal.server.desktop.DesktopConnectionManager;
 import com.mineportal.server.servers.ServerRegistry;
 import com.mineportal.server.session.SidCookieFilter;
 import com.mineportal.server.ws.EventBroadcaster;
@@ -56,18 +57,24 @@ public class AuthController {
     private final EventBroadcaster broadcaster;
     private final ServerRegistry registry;
     private final McConnectionManager mcConnections;
+    private final DesktopConnectionManager desktopConnections;
 
     public AuthController(AccountSessionManager accountSessions, EventBroadcaster broadcaster,
-                           ServerRegistry registry, McConnectionManager mcConnections) {
+                           ServerRegistry registry, McConnectionManager mcConnections,
+                           DesktopConnectionManager desktopConnections) {
         this.accountSessions = accountSessions;
         this.broadcaster = broadcaster;
         this.registry = registry;
         this.mcConnections = mcConnections;
+        this.desktopConnections = desktopConnections;
     }
 
     @GetMapping("/api/account")
     public Map<String, Object> account(@RequestAttribute("sid") String sid) {
-        return AccountView.of(accountSessions.get(sid));
+        AccountState state = accountSessions.get(sid);
+        Map<String, Object> view = new java.util.HashMap<>(AccountView.of(state));
+        view.put("desktopConnected", state.profile != null && desktopConnections.isConnected(state.profile.id()));
+        return view;
     }
 
     @PostMapping("/api/account/logout")
@@ -156,6 +163,7 @@ public class AuthController {
                 );
                 state.status = "logged-in";
                 broadcaster.refreshServersFor(sid);
+                desktopConnections.pushTokenIfConnected(state);
             } catch (Exception e) {
                 state.status = "error";
                 state.error = translateAuthError(e.getMessage());

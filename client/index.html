@@ -115,6 +115,11 @@
   .modal-subtext {
     font-size: 0.82rem; color: #c6c6d0; margin: 0 0 1.4rem; line-height: 1.5;
   }
+  .pair-code {
+    font-size: 1.8rem; font-weight: 700; letter-spacing: 0.15em; text-align: center;
+    padding: 0.9rem; border-radius: 10px; background: rgba(155,93,229,0.14); border: 1px solid var(--accent);
+    color: #fff;
+  }
   .login-modal-reason {
     font-size: 0.8rem; color: #c6c6d0; margin: 0 0 1.1rem; line-height: 1.4;
   }
@@ -712,6 +717,7 @@
       <div class="account-picker" id="accountPicker" style="display:none">
         <button type="button" class="account-btn" id="accountBtn"><span id="accountStatus"></span></button>
         <div class="account-menu" id="accountMenu">
+          <div class="account-menu-item" id="pairDesktopBtn" data-i18n="pairDesktopBtn">데스크톱 앱 연동</div>
           <div class="account-menu-item" id="logoutBtn" data-i18n="logoutBtn">로그아웃</div>
         </div>
       </div>
@@ -725,6 +731,15 @@
       <h2 data-i18n="loginBtn">로그인</h2>
       <p class="login-modal-reason" id="loginModalReason" style="display:none"></p>
       <a class="ms-login-btn" href="/api/account/login/microsoft" data-i18n="msLoginBtn">Microsoft로 로그인</a>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="pairDesktopModalBackdrop">
+    <div class="modal">
+      <button type="button" class="modal-close" id="pairDesktopModalClose">✕</button>
+      <h2 data-i18n="pairDesktopBtn">데스크톱 앱 연동</h2>
+      <p class="modal-subtext" data-i18n="pairDesktopDesc">데스크톱 앱을 실행하고, 뜨는 창에 아래 코드를 입력하세요. 5분간 유효해요.</p>
+      <p class="pair-code" id="pairDesktopCode">--------</p>
     </div>
   </div>
 
@@ -1055,9 +1070,11 @@
         featureTab4: "브라우저에서 바로 체험",
         featureTab5: "어디서든 접속",
         desktopNoteDefault: "데스크톱 프로그램은 내 PC에서 직접 접속해 IP 제한이 있는 서버에서도 안정적으로 동작해요.",
-        desktopNoteConnected: "데스크톱 클라이언트가 {server} 에 접속되어 있어요.",
-        desktopNoteRunning: "데스크톱 클라이언트가 백그라운드에서 실행 중이에요.",
-        desktopRunningLabel: "✅ 데스크톱 클라이언트 실행 중 (v{version})",
+        desktopNoteRunning: "데스크톱 클라이언트가 이 계정과 연동되어 있어요.",
+        desktopRunningLabel: "✅ 데스크톱 클라이언트 연동됨",
+        pairDesktopBtn: "데스크톱 앱 연동",
+        pairDesktopDesc: "데스크톱 앱을 실행하고, 뜨는 창에 아래 코드를 입력하세요. 5분간 유효해요.",
+        pairDesktopFailed: "코드 발급에 실패했어요: {error}",
         howTitle: "어떻게 동작하나요",
         howStep1Title: "마인크래프트 계정으로 로그인",
         howStep1Desc: "Microsoft 계정으로 안전하게 로그인해요. 로그인 정보는 기기 밖으로 나가지 않아요.",
@@ -1163,9 +1180,11 @@
         featureTab4: "Try it in the browser",
         featureTab5: "Connect from anywhere",
         desktopNoteDefault: "The desktop app connects directly from your PC, so it works reliably even on servers with IP restrictions.",
-        desktopNoteConnected: "The desktop client is connected to {server}.",
-        desktopNoteRunning: "The desktop client is running in the background.",
-        desktopRunningLabel: "✅ Desktop client running (v{version})",
+        desktopNoteRunning: "The desktop client is linked to this account.",
+        desktopRunningLabel: "✅ Desktop client linked",
+        pairDesktopBtn: "Link desktop app",
+        pairDesktopDesc: "Launch the desktop app and enter the code below in the window it shows. Valid for 5 minutes.",
+        pairDesktopFailed: "Couldn't get a pairing code: {error}",
         howTitle: "How it works",
         howStep1Title: "Log in with your Minecraft account",
         howStep1Desc: "Sign in securely with your Microsoft account. Your credentials never leave your device.",
@@ -1438,52 +1457,21 @@
       if (e.target === loginModalBackdrop) closeLoginModal();
     });
 
-    // Desktop client detection — the desktop app runs a loopback-only status
-    // server (see desktop-client StatusServer.PORT) so the web page can tell
-    // whether it's already running in the background on this machine.
-    const DESKTOP_CLIENT_PORT = 47893;
+    // 데스크톱 앱 감지 — 예전에는 앱이 로컬호스트에 띄운 상태 서버를 fetch로 직접
+    // 찔러봤지만, 이제 앱은 로컬 포트를 아예 열지 않는다(백엔드로 아웃바운드 WS만 연다).
+    // 그래서 "연결돼있나"는 계정 상태(account.desktopConnected, 백엔드가 앎)를 그대로 본다.
     const desktopStatusNote = document.getElementById("desktopStatusNote");
     const downloadBtn = document.getElementById("downloadBtn");
     const gateDownloadBtn = document.getElementById("gateDownloadBtn");
     const playGateBackdrop = document.getElementById("playGateBackdrop");
     const gateCloseBtn = document.getElementById("gateCloseBtn");
 
-    // Probes the desktop client's loopback-only status server. Resolves to its
-    // /status payload when the client is running locally, or null otherwise.
-    async function probeDesktopClient() {
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 800);
-        const res = await fetch("http://127.0.0.1:" + DESKTOP_CLIENT_PORT + "/status", {
-          signal: controller.signal,
-        });
-        clearTimeout(timeout);
-        if (!res.ok) throw new Error("bad status");
-        return await res.json();
-      } catch (err) {
-        return null;
-      }
-    }
-
-    let desktopClientInfo = null; // set once the desktop client is detected, re-used to re-render its status on language switch
-
     function renderDesktopStatus() {
-      if (!desktopClientInfo) return;
-      downloadBtn.textContent = t("desktopRunningLabel", { version: desktopClientInfo.version });
+      if (!account.desktopConnected) return;
+      downloadBtn.textContent = t("desktopRunningLabel");
       downloadBtn.href = "#";
-      desktopStatusNote.textContent = desktopClientInfo.connected
-        ? t("desktopNoteConnected", { server: desktopClientInfo.server })
-        : t("desktopNoteRunning");
+      desktopStatusNote.textContent = t("desktopNoteRunning");
     }
-
-    async function checkDesktopClient() {
-      const data = await probeDesktopClient();
-      if (!data) return;
-      desktopClientInfo = data;
-      renderDesktopStatus();
-    }
-
-    checkDesktopClient();
 
     function openPlayGate() {
       playGateBackdrop.classList.add("open");
@@ -1613,7 +1601,7 @@
       modeToggle.style.display = "none";
       trialWarning.classList.remove("show");
       modeToggleSkeleton.style.display = "";
-      desktopAvailable = !!(await probeDesktopClient());
+      desktopAvailable = !!account.desktopConnected;
       modeToggleSkeleton.style.display = "none";
       modeToggle.style.display = "";
       setPlayMode(forcedMode || (desktopAvailable ? "real" : "trial"));
@@ -2333,6 +2321,7 @@
     }
 
     function renderAccount() {
+      renderDesktopStatus();
       if (account.status === "logged-in") {
         const name = account.profile.name;
         accountStatusEl.innerHTML =
@@ -2365,6 +2354,28 @@
       accountMenu.classList.remove("open");
       await fetch("/api/account/logout", { method: "POST" });
       location.reload();
+    });
+
+    const pairDesktopBtn = document.getElementById("pairDesktopBtn");
+    const pairDesktopModalBackdrop = document.getElementById("pairDesktopModalBackdrop");
+    const pairDesktopModalClose = document.getElementById("pairDesktopModalClose");
+    const pairDesktopCode = document.getElementById("pairDesktopCode");
+
+    pairDesktopBtn.addEventListener("click", async () => {
+      accountMenu.classList.remove("open");
+      pairDesktopCode.textContent = "--------";
+      pairDesktopModalBackdrop.classList.add("open");
+      const res = await fetch("/api/desktop/pair", { method: "POST" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        pairDesktopCode.textContent = t("pairDesktopFailed", { error: body.error || res.statusText });
+        return;
+      }
+      pairDesktopCode.textContent = body.code;
+    });
+    pairDesktopModalClose.addEventListener("click", () => pairDesktopModalBackdrop.classList.remove("open"));
+    pairDesktopModalBackdrop.addEventListener("click", (e) => {
+      if (e.target === pairDesktopModalBackdrop) pairDesktopModalBackdrop.classList.remove("open");
     });
 
     function renderServers() {

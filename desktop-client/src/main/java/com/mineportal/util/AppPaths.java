@@ -16,12 +16,8 @@ public final class AppPaths {
         return dir;
     }
 
-    public static Path serversFile() {
-        return dir().resolve("servers.json");
-    }
-
-    public static Path sessionFile() {
-        return dir().resolve("session.json");
+    public static Path deviceFile() {
+        return dir().resolve("device.json");
     }
 
     private AppPaths() {

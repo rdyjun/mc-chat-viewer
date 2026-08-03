@@ -1,6 +1,7 @@
 package com.mineportal.server.ws;
 
 import com.mineportal.server.connection.ServerWsHandler;
+import com.mineportal.server.desktop.DesktopWsHandler;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
@@ -20,9 +21,11 @@ public class WebSocketConfig implements WebSocketConfigurer {
             .split(",");
 
     private final ServerWsHandler serverWsHandler;
+    private final DesktopWsHandler desktopWsHandler;
 
-    public WebSocketConfig(ServerWsHandler serverWsHandler) {
+    public WebSocketConfig(ServerWsHandler serverWsHandler, DesktopWsHandler desktopWsHandler) {
         this.serverWsHandler = serverWsHandler;
+        this.desktopWsHandler = desktopWsHandler;
     }
 
     @Override
@@ -30,6 +33,12 @@ public class WebSocketConfig implements WebSocketConfigurer {
         registry.addHandler(serverWsHandler, "/ws")
                 .addInterceptors(new SidHandshakeInterceptor())
                 .setAllowedOrigins(ALLOWED_ORIGINS);
+
+        // 데스크톱 앱 전용 채널 — 브라우저 쿠키가 아니라 최초 메시지의 페어링 코드/디바이스
+        // 토큰으로 인증하므로(DesktopWsHandler), Origin 기반 방어가 필요 없다. 브라우저가
+        // 아닌 순수 자바 WS 클라이언트라 Origin 헤더 자체를 안 보내는 경우가 대부분이기도 하다.
+        registry.addHandler(desktopWsHandler, "/app-ws")
+                .setAllowedOrigins("*");
     }
 
 }

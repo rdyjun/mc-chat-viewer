@@ -2,6 +2,7 @@ package com.mineportal.server.connection;
 
 import com.mineportal.server.account.AccountSessionManager;
 import com.mineportal.server.account.AccountState;
+import com.mineportal.server.desktop.DesktopConnectionManager;
 import com.mineportal.server.servers.ServerConfig;
 import com.mineportal.server.servers.ServerRegistry;
 import com.mineportal.server.status.PingService;
@@ -21,15 +22,17 @@ public class ConnectionController {
     private final AccountSessionManager accountSessions;
     private final McConnectionManager mcConnections;
     private final PingService pingService;
+    private final DesktopConnectionManager desktopConnections;
 
     public ConnectionController(ServerRegistry registry, EventBroadcaster broadcaster,
                                  AccountSessionManager accountSessions, McConnectionManager mcConnections,
-                                 PingService pingService) {
+                                 PingService pingService, DesktopConnectionManager desktopConnections) {
         this.registry = registry;
         this.broadcaster = broadcaster;
         this.accountSessions = accountSessions;
         this.mcConnections = mcConnections;
         this.pingService = pingService;
+        this.desktopConnections = desktopConnections;
     }
 
     /** DB의 owner id는 언제나 로그인된 마인크래프트 프로필 id다 — 서버 측에서 이 세션
@@ -59,7 +62,18 @@ public class ConnectionController {
         AccountState account = accountSessions.get(sid);
         server.phase = "active";
         broadcaster.setStatus(server, "connecting", true);
-        mcConnections.connect(server, account);
+
+        // 이 계정에 페어링된 데스크톱 앱이 붙어있으면 실제 접속은 그 앱이 사용자 PC에서
+        // 직접 수행한다(사용자 실IP 유지) — 백엔드는 명령만 전달한다. 앱이 없으면 지금까지의
+        // 체험 모드처럼 백엔드가 직접 릴레이 접속한다.
+        if (desktopConnections.isConnected(ownerId)) {
+            desktopConnections.markRouted(server.id);
+            desktopConnections.send(ownerId, Map.of(
+                    "type", "connect", "serverId", server.id, "host", server.host, "port", server.port
+            ));
+        } else {
+            mcConnections.connect(server, account);
+        }
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
@@ -74,7 +88,12 @@ public class ConnectionController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "server not found"));
         }
         if ("active".equals(server.phase)) {
-            mcConnections.disconnect(server.id);
+            if (desktopConnections.isRouted(server.id)) {
+                desktopConnections.send(ownerId, Map.of("type", "disconnect", "serverId", server.id));
+                desktopConnections.unmarkRouted(server.id);
+            } else {
+                mcConnections.disconnect(server.id);
+            }
         }
         return ResponseEntity.ok(Map.of("ok", true));
     }
@@ -88,6 +107,10 @@ public class ConnectionController {
         String message = body.get("message");
         if (message == null || message.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "message is required"));
+        }
+        if (desktopConnections.isRouted(id)) {
+            desktopConnections.send(ownerId, Map.of("type", "send-chat", "serverId", id, "message", message));
+            return ResponseEntity.ok(Map.of("ok", true));
         }
         try {
             mcConnections.sendChat(id, message);

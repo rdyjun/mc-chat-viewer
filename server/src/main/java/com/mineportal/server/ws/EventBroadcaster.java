@@ -3,6 +3,7 @@ package com.mineportal.server.ws;
 import com.mineportal.server.account.AccountSessionManager;
 import com.mineportal.server.account.AccountView;
 import com.mineportal.server.connection.ChatMessage;
+import com.mineportal.server.desktop.DesktopConnectionManager;
 import com.mineportal.server.servers.ServerConfig;
 import com.mineportal.server.servers.ServerRegistry;
 import com.mineportal.server.servers.ServerSummary;
@@ -12,6 +13,7 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import tools.jackson.databind.ObjectMapper;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -27,12 +29,15 @@ public class EventBroadcaster {
 
     private final ServerRegistry registry;
     private final AccountSessionManager accountSessions;
+    private final DesktopConnectionManager desktopConnections;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Set<WebSocketSession> sessions = ConcurrentHashMap.newKeySet();
 
-    public EventBroadcaster(ServerRegistry registry, AccountSessionManager accountSessions) {
+    public EventBroadcaster(ServerRegistry registry, AccountSessionManager accountSessions,
+                             DesktopConnectionManager desktopConnections) {
         this.registry = registry;
         this.accountSessions = accountSessions;
+        this.desktopConnections = desktopConnections;
     }
 
     public void register(WebSocketSession session) {
@@ -68,9 +73,11 @@ public class EventBroadcaster {
 
     public void sendAccountSnapshot(WebSocketSession session) {
         String sid = sidOf(session);
-        Map<String, Object> account = sid == null
+        Map<String, Object> account = new HashMap<>(sid == null
                 ? Map.of("status", "logged-out")
-                : AccountView.of(accountSessions.get(sid));
+                : AccountView.of(accountSessions.get(sid)));
+        String ownerId = ownerIdOf(session);
+        account.put("desktopConnected", ownerId != null && desktopConnections.isConnected(ownerId));
         send(session, Map.of("type", "account", "account", account));
     }
 
@@ -78,6 +85,14 @@ public class EventBroadcaster {
     public void refreshAccountFor(String sid) {
         for (WebSocketSession session : sessions) {
             if (sid.equals(sidOf(session))) sendAccountSnapshot(session);
+        }
+    }
+
+    /** 데스크톱 앱이 방금 페어링/재접속되거나 끊겼을 때, 이 계정을 보고 있는 모든 브라우저
+     * 탭에 최신 desktopConnected 값을 다시 밀어준다. */
+    public void refreshAccountForOwner(String ownerId) {
+        for (WebSocketSession session : sessions) {
+            if (ownerId.equals(ownerIdOf(session))) sendAccountSnapshot(session);
         }
     }
 

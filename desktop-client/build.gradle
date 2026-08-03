@@ -20,7 +20,9 @@ repositories {
 }
 
 dependencies {
-    implementation 'org.geysermc.mcprotocollib:protocol:1.21.7-1'
+    // 서버(../server)와 같은 26.1-SNAPSHOT을 써야 한다 — 예전 1.21.7-1은 오래된 버전
+    // 협상 방식이라 26.x 서버들이 "Outdated client!"로 거부한다 (server/build.gradle 참고).
+    implementation 'org.geysermc.mcprotocollib:protocol:26.1-SNAPSHOT'
     implementation 'net.raphimc:MinecraftAuth:4.1.1'
     implementation 'net.kyori:adventure-text-serializer-plain:4.17.0'
     implementation 'com.google.code.gson:gson:2.11.0'
@@ -37,6 +39,10 @@ tasks.named('processResources') {
     inputs.property('appVersion', project.version)
     filesMatching('version.properties') {
         expand(appVersion: project.version)
+    }
+    // 트레이 아이콘용 로고 — 웹 프론트(../client)와 동일한 파일을 그대로 가져다 쓴다.
+    from('../client') {
+        include 'logo.png'
     }
 }
 
