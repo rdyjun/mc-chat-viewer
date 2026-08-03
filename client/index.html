@@ -317,7 +317,8 @@
     padding: 0.4rem 0.55rem; font-size: 0.95rem; line-height: 1; flex-shrink: 0;
     display: inline-flex; align-items: center; justify-content: center;
   }
-  .icon-btn.refresh-btn.spinning { animation: icon-btn-spin 0.6s linear; }
+  .icon-btn.refresh-btn .refresh-icon { display: inline-block; }
+  .icon-btn.refresh-btn.spinning .refresh-icon { animation: icon-btn-spin 0.6s linear; }
   @keyframes icon-btn-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   .add-server-btn, .icon-btn.refresh-btn {
     background: transparent; color: #ccc; border: 1px solid rgba(255,255,255,0.16); box-shadow: none;
@@ -979,7 +980,7 @@
             <div class="panel-header">
               <h2 data-i18n="serverListTitle">서버 목록</h2>
               <div class="panel-header-actions">
-                <button type="button" class="icon-btn refresh-btn" id="refreshServerListBtn" data-i18n-title="refreshBtnTitle" aria-label="새로고침">⟳</button>
+                <button type="button" class="icon-btn refresh-btn" id="refreshServerListBtn" data-i18n-title="refreshBtnTitle" aria-label="새로고침"><span class="refresh-icon">⟳</span></button>
                 <button type="button" class="add-server-btn" id="addServerBtn" data-i18n="addServerBtn">+ 서버 추가</button>
               </div>
             </div>
@@ -1006,7 +1007,7 @@
       <div class="panel-header">
         <h2 data-i18n="serverListTitle">서버 목록</h2>
         <div class="panel-header-actions">
-          <button type="button" class="icon-btn refresh-btn" id="refreshServersBtn" data-i18n-title="refreshBtnTitle" aria-label="새로고침">⟳</button>
+          <button type="button" class="icon-btn refresh-btn" id="refreshServersBtn" data-i18n-title="refreshBtnTitle" aria-label="새로고침"><span class="refresh-icon">⟳</span></button>
           <button type="button" class="add-server-btn" id="addServerBtn2" data-i18n="addServerBtn">+ 서버 추가</button>
         </div>
       </div>
