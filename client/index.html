@@ -311,7 +311,15 @@
   .slot-pick-btn { width: 100%; text-align: left; font-weight: normal; }
   .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
   .panel-header h2 { margin: 0; }
+  .panel-header-actions { display: flex; align-items: center; gap: 0.4rem; }
   .add-server-btn { padding: 0.4rem 0.75rem; font-size: 0.78rem; }
+  .add-server-btn-full { display: block; width: 100%; text-align: center; margin-top: 0.75rem; }
+  .icon-btn.refresh-btn {
+    padding: 0.4rem 0.55rem; font-size: 0.95rem; line-height: 1; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .icon-btn.refresh-btn.spinning { animation: icon-btn-spin 0.6s linear; }
+  @keyframes icon-btn-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   #serverList { list-style: none; padding: 0; margin: 0.75rem 0 0; display: flex; flex-direction: column; gap: 0.5rem; }
   #serverList li, .home-demo-sidebar li {
     padding: 0.7rem; border-radius: 14px; font-size: 0.85rem; cursor: grab;
@@ -962,9 +970,10 @@
           <div class="panel">
             <div class="panel-header">
               <h2 data-i18n="serverListTitle">서버 목록</h2>
-              <button type="button" class="add-server-btn" id="addServerBtn" data-i18n="addServerBtn">+ 서버 추가</button>
+              <button type="button" class="icon-btn refresh-btn" id="refreshServerListBtn" data-i18n-title="refreshBtnTitle" aria-label="새로고침">⟳</button>
             </div>
             <ul id="serverList"></ul>
+            <button type="button" class="add-server-btn add-server-btn-full" id="addServerBtn" data-i18n="addServerBtn">+ 서버 추가</button>
           </div>
         </div>
       </div>
@@ -986,7 +995,10 @@
     <div class="panel">
       <div class="panel-header">
         <h2 data-i18n="serverListTitle">서버 목록</h2>
-        <button type="button" class="add-server-btn" id="addServerBtn2" data-i18n="addServerBtn">+ 서버 추가</button>
+        <div class="panel-header-actions">
+          <button type="button" class="icon-btn refresh-btn" id="refreshServersBtn" data-i18n-title="refreshBtnTitle" aria-label="새로고침">⟳</button>
+          <button type="button" class="add-server-btn" id="addServerBtn2" data-i18n="addServerBtn">+ 서버 추가</button>
+        </div>
       </div>
       <div class="server-grid-view" id="serverGridView"></div>
     </div>
@@ -1075,6 +1087,7 @@
         exploreTitle: "서버 탐색",
         serverListTitle: "서버 목록",
         addServerBtn: "+ 서버 추가",
+        refreshBtnTitle: "새로고침",
         footerCopy: "© 2026 마인포탈",
         layout1: "1개",
         layout2: "2개",
@@ -1182,6 +1195,7 @@
         exploreTitle: "Discover Servers",
         serverListTitle: "Server List",
         addServerBtn: "+ Add Server",
+        refreshBtnTitle: "Refresh",
         footerCopy: "© 2026 MinePortal",
         layout1: "1 window",
         layout2: "2 windows",
@@ -1268,6 +1282,8 @@
     const serverGridView = document.getElementById("serverGridView");
     const addServerBtn = document.getElementById("addServerBtn");
     const addServerBtn2 = document.getElementById("addServerBtn2");
+    const refreshServerListBtn = document.getElementById("refreshServerListBtn");
+    const refreshServersBtn = document.getElementById("refreshServersBtn");
     const recentServersPanel = document.getElementById("recentServersPanel");
     const recentServersEl = document.getElementById("recentServers");
     const tryWebBtn = document.getElementById("tryWebBtn");
@@ -1616,6 +1632,8 @@
       (root || document).querySelectorAll(".ping-badge").forEach(async (badge) => {
         const host = badge.dataset.host;
         const port = badge.dataset.port;
+        badge.classList.remove("online", "offline");
+        badge.textContent = t("pingChecking");
         try {
           const res = await fetch("/api/ping?host=" + encodeURIComponent(host) + "&port=" + encodeURIComponent(port));
           const data = await res.json();
@@ -1632,6 +1650,20 @@
         }
       });
     }
+
+    // 두 서버 목록(사이드바/서버 탭)의 새로고침 버튼 — 클릭 시 그 목록 안의 핑 배지만
+    // 다시 조회한다. 페이지 전체를 새로고침하지 않아도 인원수를 최신화할 수 있게 함.
+    function bindRefreshBtn(btn, root) {
+      if (!btn) return;
+      btn.addEventListener("click", () => {
+        btn.classList.remove("spinning");
+        void btn.offsetWidth;
+        btn.classList.add("spinning");
+        refreshPingBadges(root);
+      });
+    }
+    bindRefreshBtn(refreshServerListBtn, serverListEl);
+    bindRefreshBtn(refreshServersBtn, serverGridView);
 
     // Maps a raw status string (from ServerConfig.status on the backend: "idle",
     // "connecting", "connected", or "disconnected: <reason>") to one of the four
@@ -2818,6 +2850,16 @@
     function syncWs() {
       if (wsNeeded()) ensureWs();
     }
+
+    // 연결된 서버가 있는 상태로 새로고침/탭 닫기를 하면 그 연결이 알림 없이 끊겨버리므로,
+    // 브라우저 기본 "나가시겠습니까?" 확인창을 띄운다. (커스텀 문구는 모든 최신 브라우저가
+    // 무시하고 자체 텍스트를 보여주므로 returnValue 값 자체는 의미 없음)
+    window.addEventListener("beforeunload", (e) => {
+      if (servers.some((s) => s.connected)) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    });
 
     async function initAccountAndServers() {
       const accountRes = await fetch("/api/account");
