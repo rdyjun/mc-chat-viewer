@@ -11,14 +11,39 @@ jobs:
     steps:
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          FORCE_REBUILD: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
+          envs: FORCE_REBUILD
           script: |
             set -e
             cd ~/mc-chat-viewer
+            OLD_SHA=$(git rev-parse HEAD)
             git fetch origin main
             git reset --hard origin/main
-            docker compose --env-file server/.env up -d --build
-            docker image prune -f
+            NEW_SHA=$(git rev-parse HEAD)
+
+            # client/는 컨테이너에 bind mount돼있어(docker-compose.yml) git reset만으로 이미
+            # 최신 파일이 반영되므로, 백엔드/빌드 관련 경로가 안 바뀐 프론트 전용 커밋은
+            # jar 재빌드나 컨테이너 재시작 없이 여기서 끝난다.
+            if [ "$FORCE_REBUILD" = "1" ]; then
+              echo "Manually triggered — forcing full rebuild"
+              REBUILD=1
+            elif [ "$OLD_SHA" = "$NEW_SHA" ]; then
+              echo "No new commits — nothing to do"
+              REBUILD=0
+            elif git diff --name-only "$OLD_SHA" "$NEW_SHA" | grep -qE '^(server/|docker-compose\.yml$)'; then
+              echo "Backend/build files changed — rebuilding"
+              REBUILD=1
+            else
+              echo "Frontend-only change — static files already updated via bind mount, skipping rebuild"
+              REBUILD=0
+            fi
+
+            if [ "$REBUILD" = "1" ]; then
+              docker compose --env-file server/.env up -d --build
+              docker image prune -f
+            fi

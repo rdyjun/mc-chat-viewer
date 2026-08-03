@@ -4,6 +4,12 @@ server:
 spring:
   application:
     name: mineportal-server
+  web:
+    resources:
+      # 컨테이너에 client/ 디렉터리가 bind mount돼있으면(docker-compose.yml) 그걸 우선 서빙해서
+      # 프론트만 바뀐 배포는 이 파일들만 새로 받고 jar 재빌드/컨테이너 재시작 없이 반영되게 한다.
+      # 마운트가 없는 로컬 실행 환경에서는 build.gradle이 jar에 구워넣은 classpath:/static/로 대체됨.
+      static-locations: file:/client-static/,classpath:/static/
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:mineportal}
     driver-class-name: org.postgresql.Driver

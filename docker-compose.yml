@@ -30,6 +30,7 @@ services:
         condition: service_healthy
     volumes:
       - ./nmp-cache:/app/nmp-cache
+      - ./client:/client-static:ro
 
 volumes:
   pgdata:
