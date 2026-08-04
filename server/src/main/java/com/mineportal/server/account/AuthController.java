@@ -163,10 +163,19 @@ public class AuthController {
                 );
                 state.status = "logged-in";
                 broadcaster.refreshServersFor(sid);
-                desktopConnections.pushTokenIfConnected(state);
             } catch (Exception e) {
                 state.status = "error";
                 state.error = translateAuthError(e.getMessage());
+                e.printStackTrace();
+            }
+            // 로그인 자체는 이미 끝난 뒤의 부가 동작이라, 여기서 뭔가 실패해도 로그인
+            // 성공 상태를 절대 덮어쓰면 안 된다 — 별도 try-catch로 완전히 격리한다.
+            if ("logged-in".equals(state.status)) {
+                try {
+                    desktopConnections.pushTokenIfConnected(state);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
             broadcaster.refreshAccountFor(sid);
         }, "mineportal-login-" + sid).start();
