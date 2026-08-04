@@ -3,12 +3,15 @@ package com.mineportal.server.desktop;
 import com.mineportal.server.account.AccountState;
 import net.raphimc.minecraftauth.step.java.StepMCProfile;
 import net.raphimc.minecraftauth.step.java.StepMCToken;
+import net.raphimc.minecraftauth.step.java.StepPlayerCertificates;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import tools.jackson.databind.ObjectMapper;
 
 import java.security.SecureRandom;
+import java.util.Base64;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -100,19 +103,30 @@ public class DesktopConnectionManager {
 
     /** 이 계정으로 앱이 붙어있으면 마인크래프트 액세스 토큰을 그 자리에서 밀어준다 — 로그인
      * 완료 직후, 그리고 앱이 로그인 완료 이후에 새로 페어링/재접속했을 때 둘 다 호출된다.
-     * 브라우저는 이 토큰을 절대 보지 않는다(AccountState.fullSession의 서버 전용 필드). */
+     * 브라우저는 이 토큰을 절대 보지 않는다(AccountState.fullSession의 서버 전용 필드).
+     * 서명 인증서(있고 만료 전이면)도 함께 보내서, 앱이 McConnectionManager와 동일하게
+     * enforce-secure-profile 서버용 채팅/명령어 서명을 직접 할 수 있게 한다. */
     public void pushTokenIfConnected(AccountState state) {
         if (state.profile == null || state.fullSession == null) return;
         String ownerId = state.profile.id();
         if (!isConnected(ownerId)) return;
         StepMCProfile.MCProfile mcProfile = state.fullSession.getMcProfile();
         StepMCToken.MCToken token = mcProfile.getMcToken();
-        send(ownerId, Map.of(
-                "type", "token",
-                "uuid", mcProfile.getId().toString(),
-                "name", mcProfile.getName(),
-                "accessToken", token.getAccessToken()
-        ));
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("type", "token");
+        payload.put("uuid", mcProfile.getId().toString());
+        payload.put("name", mcProfile.getName());
+        payload.put("accessToken", token.getAccessToken());
+
+        StepPlayerCertificates.PlayerCertificates certs = state.fullSession.getPlayerCertificates();
+        if (certs != null && !certs.isExpired()) {
+            payload.put("certExpiresAt", certs.getExpireTimeMs());
+            payload.put("certPrivateKey", Base64.getEncoder().encodeToString(certs.getPrivateKey().getEncoded()));
+            payload.put("certPublicKey", Base64.getEncoder().encodeToString(certs.getPublicKey().getEncoded()));
+            payload.put("certPublicKeySignature", Base64.getEncoder().encodeToString(certs.getPublicKeySignature()));
+        }
+        send(ownerId, payload);
     }
 
     public void send(String ownerId, Map<String, Object> payload) {

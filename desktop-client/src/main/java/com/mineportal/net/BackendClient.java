@@ -12,7 +12,13 @@ import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.security.KeyFactory;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.time.Duration;
+import java.util.Base64;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -139,12 +145,32 @@ public final class BackendClient {
             case "token" -> account = new Account(
                     UUID.fromString(obj.get("uuid").getAsString()),
                     obj.get("name").getAsString(),
-                    obj.get("accessToken").getAsString());
+                    obj.get("accessToken").getAsString(),
+                    parseSigningCert(obj));
             case "connect" -> handleConnect(obj.get("serverId").getAsString(),
                     obj.get("host").getAsString(), obj.get("port").getAsInt());
             case "disconnect" -> handleDisconnect(obj.get("serverId").getAsString());
             case "send-chat" -> handleSendChat(obj.get("serverId").getAsString(), obj.get("message").getAsString());
             default -> { /* 알 수 없는 메시지 타입은 무시 */ }
+        }
+    }
+
+    /** 백엔드가 로그인 시 발급된 채팅 서명 인증서를 함께 보내주면(있고 만료 전이면) 파싱해서
+     * 채팅/명령어 서명에 쓴다 — 없으면 무서명으로 보내고, secure-chat을 강제하는 서버는
+     * 조용히 거부한다(McConnectionManager와 동일한 동작). */
+    private Account.SigningCert parseSigningCert(JsonObject obj) {
+        if (!obj.has("certPrivateKey") || !obj.has("certPublicKey")) return null;
+        try {
+            KeyFactory rsa = KeyFactory.getInstance("RSA");
+            PrivateKey privateKey = rsa.generatePrivate(
+                    new PKCS8EncodedKeySpec(Base64.getDecoder().decode(obj.get("certPrivateKey").getAsString())));
+            PublicKey publicKey = rsa.generatePublic(
+                    new X509EncodedKeySpec(Base64.getDecoder().decode(obj.get("certPublicKey").getAsString())));
+            byte[] signature = Base64.getDecoder().decode(obj.get("certPublicKeySignature").getAsString());
+            long expiresAt = obj.get("certExpiresAt").getAsLong();
+            return new Account.SigningCert(privateKey, publicKey, signature, expiresAt);
+        } catch (Exception e) {
+            return null;
         }
     }
 

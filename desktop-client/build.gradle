@@ -44,6 +44,11 @@ tasks.named('processResources') {
     from('../client') {
         include 'logo.png'
     }
+    // 채팅 번역 렌더링용 언어 파일 — 백엔드(../server)와 동일한 것을 그대로 가져다 쓴다
+    // (McConnectionManager와 동일한 시스템 메시지 번역 결과를 내기 위함).
+    from('../server/src/main/resources/lang') {
+        into 'lang'
+    }
 }
 
 tasks.named('shadowJar') {
